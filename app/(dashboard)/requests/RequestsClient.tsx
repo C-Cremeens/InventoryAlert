@@ -58,7 +58,8 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
   return (
     <div>
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit mb-5">
+      <div className="overflow-x-auto mb-5">
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
         {TABS.map((tab) => (
           <button
             key={tab.label}
@@ -73,6 +74,7 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
           </button>
         ))}
       </div>
+      </div>
 
       {requests.length === 0 ? (
         <div className="text-center py-16 text-gray-500 bg-white border border-gray-200 rounded-xl">
@@ -80,6 +82,7 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-left">
@@ -131,6 +134,7 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

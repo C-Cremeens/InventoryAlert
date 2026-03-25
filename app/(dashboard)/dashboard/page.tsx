@@ -27,7 +27,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <TierBadge tier={tier} />
       </div>
@@ -77,6 +77,7 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50 text-left">
@@ -104,6 +105,7 @@ export default async function DashboardPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>

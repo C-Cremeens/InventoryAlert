@@ -15,7 +15,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 bg-white border-r border-gray-200 flex flex-col min-h-screen">
+    <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 flex-col min-h-screen">
       <div className="px-5 py-5 border-b border-gray-100">
         <span className="font-bold text-gray-900 text-lg">InventoryAlert</span>
       </div>
