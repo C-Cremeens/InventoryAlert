@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Tier {
+  FREE
+  FAMILY
+  ENTERPRISE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+enum ExternalPlatform {
+  AMAZON
+  WALMART
+  SHOPIFY
+  OTHER
+}
+
+model User {
+  id                     String          @id @default(cuid())
+  email                  String          @unique
+  hashedPassword         String
+  name                   String?
+  tier                   Tier            @default(FREE)
+  stripeCustomerId       String?         @unique
+  stripeSubscriptionId   String?         @unique
+  stripeCurrentPeriodEnd DateTime?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  items                  InventoryItem[]
+}
+
+model InventoryItem {
+  id                String            @id @default(cuid())
+  name              String
+  description       String?
+  imageUrl          String?
+  alertEmail        String
+  qrCodeId          String            @unique @default(uuid())
+  userId            String
+
+  // Future: third-party shopping cart integration
+  externalCartLink  String?
+  externalPlatform  ExternalPlatform?
+  externalApiKeyRef String?
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stockingRequests  StockingRequest[]
+
+  @@index([userId])
+  @@index([qrCodeId])
+}
+
+model StockingRequest {
+  id        String        @id @default(cuid())
+  itemId    String
+  status    RequestStatus @default(PENDING)
+  emailSent Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  item      InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([createdAt])
+  @@index([status])
+}
