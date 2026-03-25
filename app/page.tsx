@@ -1,6 +1,44 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { TIER_LIMITS } from "@/lib/tier";
+import type { Tier } from "@prisma/client";
+
+const PRICING_TIERS: {
+  key: Tier;
+  description: string;
+  cta: string;
+  highlight: boolean;
+  accentClass: string;
+  ctaClass: string;
+  badge?: string;
+}[] = [
+  {
+    key: "FREE",
+    description: "Perfect for trying it out or managing a small space.",
+    cta: "Get started free",
+    highlight: false,
+    accentClass: "border-gray-200",
+    ctaClass: "bg-gray-900 text-white hover:bg-gray-700",
+  },
+  {
+    key: "FAMILY",
+    description: "Unlimited items for homes, small businesses, and growing teams.",
+    cta: "Start Family plan",
+    highlight: true,
+    accentClass: "border-blue-500 ring-2 ring-blue-500",
+    ctaClass: "bg-blue-600 text-white hover:bg-blue-700",
+    badge: "Most popular",
+  },
+  {
+    key: "ENTERPRISE",
+    description: "Full power with custom labels for larger operations.",
+    cta: "Start Enterprise plan",
+    highlight: false,
+    accentClass: "border-purple-200",
+    ctaClass: "bg-purple-600 text-white hover:bg-purple-700",
+  },
+];
 
 export default async function HomePage() {
   const session = await auth();
@@ -155,64 +193,36 @@ export default async function HomePage() {
             Start free. Upgrade as you grow. No hidden fees.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {/* Free */}
-            <PricingCard
-              name="Free"
-              price="$0"
-              period="/mo"
-              description="Perfect for trying it out or managing a small space."
-              features={[
-                { label: "Up to 5 inventory items", included: true },
-                { label: "QR label generation", included: true },
-                { label: "Email restock alerts", included: true },
-                { label: "Request tracking", included: true },
-                { label: "Custom labels", included: false },
-              ]}
-              cta="Get started free"
-              href="/register"
-              highlight={false}
-              accentClass="border-gray-200"
-              ctaClass="bg-gray-900 text-white hover:bg-gray-700"
-            />
-            {/* Family */}
-            <PricingCard
-              name="Family"
-              price="$9"
-              period="/mo"
-              description="Unlimited items for homes, small businesses, and growing teams."
-              features={[
-                { label: "Unlimited inventory items", included: true },
-                { label: "QR label generation", included: true },
-                { label: "Email restock alerts", included: true },
-                { label: "Request tracking", included: true },
-                { label: "Custom labels", included: false },
-              ]}
-              cta="Start Family plan"
-              href="/register"
-              highlight={true}
-              accentClass="border-blue-500 ring-2 ring-blue-500"
-              ctaClass="bg-blue-600 text-white hover:bg-blue-700"
-              badge="Most popular"
-            />
-            {/* Enterprise */}
-            <PricingCard
-              name="Enterprise"
-              price="$29"
-              period="/mo"
-              description="Full power with custom labels for larger operations."
-              features={[
-                { label: "Unlimited inventory items", included: true },
-                { label: "QR label generation", included: true },
-                { label: "Email restock alerts", included: true },
-                { label: "Request tracking", included: true },
-                { label: "Custom labels", included: true },
-              ]}
-              cta="Start Enterprise plan"
-              href="/register"
-              highlight={false}
-              accentClass="border-purple-200"
-              ctaClass="bg-purple-600 text-white hover:bg-purple-700"
-            />
+            {PRICING_TIERS.map((t) => {
+              const tier = TIER_LIMITS[t.key];
+              const itemsLabel =
+                tier.maxItems === Infinity
+                  ? "Unlimited inventory items"
+                  : `Up to ${tier.maxItems} inventory items`;
+              const [price, period] = tier.price.split("/");
+              return (
+                <PricingCard
+                  key={t.key}
+                  name={tier.label}
+                  price={price}
+                  period={`/${period}`}
+                  description={t.description}
+                  features={[
+                    { label: itemsLabel, included: true },
+                    { label: "QR label generation", included: true },
+                    { label: "Email restock alerts", included: true },
+                    { label: "Request tracking", included: true },
+                    { label: "Custom labels", included: tier.customLabels },
+                  ]}
+                  cta={t.cta}
+                  href="/register"
+                  highlight={t.highlight}
+                  accentClass={t.accentClass}
+                  ctaClass={t.ctaClass}
+                  badge={t.badge}
+                />
+              );
+            })}
           </div>
         </div>
       </section>
