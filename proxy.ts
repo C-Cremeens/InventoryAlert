@@ -1,6 +1,10 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
+// Credentials provider uses bcrypt which requires the Node.js crypto module.
+// Force the Node.js runtime so the proxy doesn't run in the Edge runtime.
+export const runtime = "nodejs";
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
