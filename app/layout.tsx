@@ -12,9 +12,37 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://inventoryalert.app";
+
 export const metadata: Metadata = {
-  title: "InventoryAlert",
-  description: "QR-based inventory alert system",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "InventoryAlert",
+    template: "%s | InventoryAlert",
+  },
+  description:
+    "Print QR labels, stick them on any shelf or bin, and get an instant email the moment someone scans a low-stock item — no app required.",
+  keywords: [
+    "inventory management",
+    "QR code alerts",
+    "stock alerts",
+    "restock notifications",
+    "inventory tracking",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "InventoryAlert",
+    title: "InventoryAlert — Stock alerts, zero friction",
+    description:
+      "Print QR labels, stick them on any shelf or bin, and get an instant email the moment someone scans a low-stock item — no app required.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "InventoryAlert — Stock alerts, zero friction",
+    description:
+      "Print QR labels, stick them on any shelf or bin, and get an instant email the moment someone scans a low-stock item — no app required.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({

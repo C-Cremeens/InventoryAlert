@@ -3,6 +3,30 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { TIER_LIMITS } from "@/lib/tier";
 import type { Tier } from "@prisma/client";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "InventoryAlert — Stock alerts, zero friction",
+  description:
+    "Print QR labels, stick them on any shelf or bin, and get an instant email the moment someone scans a low-stock item — no app required.",
+  alternates: { canonical: "/" },
+  openGraph: { url: "/" },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "InventoryAlert",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "QR-based inventory alert system. Print labels, scan when low, get instant restock emails — no app required.",
+  offers: [
+    { "@type": "Offer", price: "0", priceCurrency: "USD", name: "Free" },
+    { "@type": "Offer", price: "9", priceCurrency: "USD", name: "Family" },
+    { "@type": "Offer", price: "29", priceCurrency: "USD", name: "Enterprise" },
+  ],
+};
 
 const PRICING_TIERS: {
   key: Tier;
@@ -46,6 +70,10 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Hero */}
       <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900">
         <main className="flex flex-col items-center justify-center px-6 py-20 text-center">
