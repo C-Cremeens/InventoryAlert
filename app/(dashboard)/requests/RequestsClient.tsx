@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { RequestStatus } from "@prisma/client";
+
+const FILTER_KEY = "requests-status-filter";
 
 interface Request {
   id: string;
@@ -35,7 +37,27 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
   const [requests, setRequests] = useState(initialRequests);
   const [loading, setLoading] = useState<string | null>(null);
 
+  // Sync local state when the server sends new filtered data after navigation
+  useEffect(() => {
+    setRequests(initialRequests);
+  }, [initialRequests]);
+
+  // Restore persisted filter on initial load when no filter is in the URL
+  useEffect(() => {
+    if (activeStatus === null) {
+      const saved = localStorage.getItem(FILTER_KEY) as RequestStatus | null;
+      if (saved) {
+        router.replace(`/requests?status=${saved}`);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleTabChange(status: RequestStatus | null) {
+    if (status) {
+      localStorage.setItem(FILTER_KEY, status);
+    } else {
+      localStorage.removeItem(FILTER_KEY);
+    }
     const url = status ? `/requests?status=${status}` : "/requests";
     router.push(url);
   }
@@ -48,9 +70,11 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
       body: JSON.stringify({ status }),
     });
     if (res.ok) {
-      setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status } : r))
-      );
+      setRequests((prev) => {
+        const updated = prev.map((r) => (r.id === id ? { ...r, status } : r));
+        // Remove items that no longer match the active filter
+        return activeStatus ? updated.filter((r) => r.status === activeStatus) : updated;
+      });
     }
     setLoading(null);
   }
