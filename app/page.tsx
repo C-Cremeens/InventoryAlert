@@ -2,7 +2,13 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { TIER_LIMITS } from "@/lib/tier";
+import { stripe, STRIPE_PRICES } from "@/lib/stripe";
 import type { Tier } from "@prisma/client";
+
+function formatStripePrice(unitAmount: number | null): string {
+  if (!unitAmount) return "$0";
+  return "$" + (unitAmount / 100).toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
 
 const PRICING_TIERS: {
   key: Tier;
@@ -43,6 +49,26 @@ const PRICING_TIERS: {
 export default async function HomePage() {
   const session = await auth();
   if (session) redirect("/dashboard");
+
+  // Fetch live prices from Stripe; fall back to tier.ts values if unavailable
+  let livePrices: Record<"FREE" | "FAMILY" | "ENTERPRISE", string> = {
+    FREE: "$0",
+    FAMILY: TIER_LIMITS.FAMILY.price.replace("/mo", ""),
+    ENTERPRISE: TIER_LIMITS.ENTERPRISE.price.replace("/mo", ""),
+  };
+  try {
+    const [familyPrice, enterprisePrice] = await Promise.all([
+      stripe.prices.retrieve(STRIPE_PRICES.FAMILY),
+      stripe.prices.retrieve(STRIPE_PRICES.ENTERPRISE),
+    ]);
+    livePrices = {
+      FREE: "$0",
+      FAMILY: formatStripePrice(familyPrice.unit_amount),
+      ENTERPRISE: formatStripePrice(enterprisePrice.unit_amount),
+    };
+  } catch {
+    // fall back to tier.ts values set above
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -199,13 +225,12 @@ export default async function HomePage() {
                 tier.maxItems === Infinity
                   ? "Unlimited inventory items"
                   : `Up to ${tier.maxItems} inventory items`;
-              const [price, period] = tier.price.split("/");
               return (
                 <PricingCard
                   key={t.key}
                   name={tier.label}
-                  price={price}
-                  period={`/${period}`}
+                  price={livePrices[t.key]}
+                  period="/mo"
                   description={t.description}
                   features={[
                     { label: itemsLabel, included: true },
