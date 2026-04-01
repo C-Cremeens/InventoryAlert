@@ -106,8 +106,8 @@ export default async function HomePage() {
       <main>
         <section className="relative overflow-hidden border-b border-white/10">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_45%)]" />
-          <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-            <div>
+          <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+            <div className="scroll-reveal max-w-3xl">
               <p className="mb-4 inline-flex rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-medium uppercase tracking-wider text-cyan-200">
                 Reduce stockouts without adding friction
               </p>
@@ -134,41 +134,46 @@ export default async function HomePage() {
               </div>
               <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {STATS.map((stat) => (
-                  <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                  <div key={stat.label} className="scroll-reveal rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                     <p className="text-2xl font-semibold text-white">{stat.value}</p>
                     <p className="text-sm text-slate-300">{stat.label}</p>
                   </div>
                 ))}
               </div>
             </div>
-
-            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur">
-              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-200">How it works</p>
-              <ol className="mt-5 space-y-4">
-                <HeroStep
-                  number={1}
-                  title="Create & print labels"
-                  description="Generate QR labels for every tracked item and place them where inventory gets used."
-                />
-                <HeroStep
-                  number={2}
-                  title="Let anyone scan"
-                  description="When stock is low, a quick scan submits a request instantly from any phone camera."
-                />
-                <HeroStep
-                  number={3}
-                  title="Restock with confidence"
-                  description="Receive email alerts and manage incoming requests in one clean workflow."
-                />
-              </ol>
-            </div>
           </div>
         </section>
 
         <section className="border-b border-white/10 bg-slate-900">
           <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
-            <h2 className="text-3xl font-semibold tracking-tight text-white">Built for real-world operations</h2>
-            <p className="mt-3 max-w-3xl text-slate-300">
+            <h2 className="scroll-reveal text-3xl font-semibold tracking-tight text-white">How it works</h2>
+            <p className="scroll-reveal mt-3 max-w-3xl text-slate-300">
+              A clean, repeatable restock workflow that your whole team can adopt in minutes.
+            </p>
+            <ol className="mt-10 grid gap-5 md:grid-cols-3">
+              <HeroStep
+                number={1}
+                title="Create & print labels"
+                description="Generate QR labels for every tracked item and place them where inventory gets used."
+              />
+              <HeroStep
+                number={2}
+                title="Let anyone scan"
+                description="When stock is low, a quick scan submits a request instantly from any phone camera."
+              />
+              <HeroStep
+                number={3}
+                title="Restock with confidence"
+                description="Receive email alerts and manage incoming requests in one clean workflow."
+              />
+            </ol>
+          </div>
+        </section>
+
+        <section className="border-b border-white/10 bg-slate-950">
+          <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
+            <h2 className="scroll-reveal text-3xl font-semibold tracking-tight text-white">Built for real-world operations</h2>
+            <p className="scroll-reveal mt-3 max-w-3xl text-slate-300">
               Designed for busy teams that need a simple system people actually use. No heavy rollout,
               no extra app, no complex behavior change.
             </p>
@@ -176,7 +181,7 @@ export default async function HomePage() {
               {FEATURE_PILLARS.map((feature) => (
                 <article
                   key={feature.title}
-                  className="rounded-2xl border border-white/10 bg-slate-950/70 p-5"
+                  className="scroll-reveal rounded-2xl border border-white/10 bg-slate-900/70 p-5"
                 >
                   <h3 className="text-lg font-semibold text-white">{feature.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-300">{feature.description}</p>
@@ -186,12 +191,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="border-b border-white/10 bg-slate-950">
+        <section className="border-b border-white/10 bg-slate-900">
           <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
-            <h2 className="text-center text-3xl font-semibold tracking-tight text-white">
+            <h2 className="scroll-reveal text-center text-3xl font-semibold tracking-tight text-white">
               Transparent pricing that scales with you
             </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-center text-slate-300">
+            <p className="scroll-reveal mx-auto mt-3 max-w-2xl text-center text-slate-300">
               Start free, grow as needed, and keep predictable costs as your operations expand.
             </p>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -229,10 +234,10 @@ export default async function HomePage() {
 
         <section className="bg-slate-950">
           <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
-            <h2 className="text-3xl font-semibold tracking-tight text-white">Frequently asked questions</h2>
+            <h2 className="scroll-reveal text-3xl font-semibold tracking-tight text-white">Frequently asked questions</h2>
             <div className="mt-8 space-y-4">
               {FAQS.map((faq) => (
-                <article key={faq.question} className="rounded-xl border border-white/10 bg-white/5 p-5">
+                <article key={faq.question} className="scroll-reveal rounded-xl border border-white/10 bg-white/5 p-5">
                   <h3 className="font-semibold text-white">{faq.question}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-300">{faq.answer}</p>
                 </article>
@@ -269,13 +274,15 @@ function HeroStep({
   description: string;
 }) {
   return (
-    <li className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-400 font-semibold text-slate-950">
+    <li className="scroll-reveal rounded-2xl border border-white/10 bg-slate-900/70 p-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-400 font-semibold text-slate-950">
         {number}
-      </div>
-      <div>
-        <p className="font-medium text-white">{title}</p>
-        <p className="mt-1 text-sm text-slate-300">{description}</p>
+        </div>
+        <div>
+          <p className="font-medium text-white">{title}</p>
+          <p className="mt-1 text-sm text-slate-300">{description}</p>
+        </div>
       </div>
     </li>
   );
@@ -306,7 +313,7 @@ function PricingCard({
         highlight
           ? "border-cyan-300/50 bg-cyan-300/10"
           : "border-white/10 bg-slate-950"
-      }`}
+      } scroll-reveal`}
     >
       {badge ? (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-cyan-300 px-3 py-1 text-xs font-semibold text-slate-900">
