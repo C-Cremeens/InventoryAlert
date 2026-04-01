@@ -47,7 +47,10 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white border-t border-gray-200">
+    <nav
+      aria-label="Primary"
+      className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]"
+    >
       <div className="flex">
         {navItems.map((item) => {
           const active =
@@ -57,8 +60,8 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors ${
-                active ? "text-blue-600" : "text-gray-400 hover:text-gray-600"
+              className={`flex-1 flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors ${
+                active ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
               }`}
             >
               {item.icon}

@@ -19,7 +19,7 @@ export default async function ItemsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           {limit.maxItems !== Infinity && (
@@ -31,14 +31,14 @@ export default async function ItemsPage() {
         {atLimit ? (
           <Link
             href="/settings"
-            className="bg-orange-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-orange-600 transition-colors"
+            className="w-full sm:w-auto text-center bg-orange-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-orange-600 transition-colors"
           >
             Upgrade to add more
           </Link>
         ) : (
           <Link
             href="/items/new"
-            className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="w-full sm:w-auto text-center bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 transition-colors"
           >
             + New item
           </Link>

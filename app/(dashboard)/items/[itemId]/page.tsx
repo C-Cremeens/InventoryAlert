@@ -20,12 +20,12 @@ export default async function EditItemPage({
 
   return (
     <div className="max-w-lg">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Edit Item</h1>
         <Link
           href={`/items/${item.id}/print`}
           target="_blank"
-          className="border border-gray-300 text-gray-700 rounded-lg px-4 py-1.5 text-sm hover:bg-gray-50 transition-colors"
+          className="w-full sm:w-auto text-center border border-gray-300 text-gray-700 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
         >
           Print label
         </Link>

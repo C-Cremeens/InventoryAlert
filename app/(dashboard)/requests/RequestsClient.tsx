@@ -106,7 +106,7 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-left">
@@ -133,34 +133,89 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {r.status === "PENDING" ? (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => updateStatus(r.id, "APPROVED")}
-                          disabled={loading === r.id}
-                          className="px-3 py-1 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 disabled:opacity-50 transition-colors"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => updateStatus(r.id, "DECLINED")}
-                          disabled={loading === r.id}
-                          className="px-3 py-1 text-xs font-medium bg-red-50 text-red-700 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50 transition-colors"
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
+                    <ActionButtons
+                      requestId={r.id}
+                      requestStatus={r.status}
+                      loading={loading}
+                      onApprove={updateStatus}
+                      onDecline={updateStatus}
+                    />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           </div>
+          <ul className="divide-y divide-gray-100 md:hidden">
+            {requests.map((r) => (
+              <li key={r.id} className="px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm text-gray-900 truncate">{r.item.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(r.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusStyles[r.status]}`}
+                  >
+                    {r.status.charAt(0) + r.status.slice(1).toLowerCase()}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <ActionButtons
+                    requestId={r.id}
+                    requestStatus={r.status}
+                    loading={loading}
+                    onApprove={updateStatus}
+                    onDecline={updateStatus}
+                    mobile
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+function ActionButtons({
+  requestId,
+  requestStatus,
+  loading,
+  onApprove,
+  onDecline,
+  mobile = false,
+}: {
+  requestId: string;
+  requestStatus: RequestStatus;
+  loading: string | null;
+  onApprove: (id: string, status: "APPROVED" | "DECLINED") => Promise<void>;
+  onDecline: (id: string, status: "APPROVED" | "DECLINED") => Promise<void>;
+  mobile?: boolean;
+}) {
+  if (requestStatus !== "PENDING") {
+    return <span className="text-xs text-gray-400">—</span>;
+  }
+
+  return (
+    <div className={`flex gap-2 ${mobile ? "flex-col sm:flex-row" : "flex-row"}`}>
+      <button
+        onClick={() => onApprove(requestId, "APPROVED")}
+        disabled={loading === requestId}
+        className="px-3 py-2 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 disabled:opacity-50 transition-colors"
+      >
+        Approve
+      </button>
+      <button
+        onClick={() => onDecline(requestId, "DECLINED")}
+        disabled={loading === requestId}
+        className="px-3 py-2 text-xs font-medium bg-red-50 text-red-700 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50 transition-colors"
+      >
+        Decline
+      </button>
     </div>
   );
 }
