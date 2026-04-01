@@ -59,21 +59,6 @@ const STATS = [
   { label: "Training needed", value: "0 manuals" },
 ];
 
-const TESTIMONIALS = [
-  {
-    quote:
-      "We reduced stockout surprises almost immediately. People just scan and we take action from the queue.",
-    author: "Operations Manager",
-    org: "Community Food Hub",
-  },
-  {
-    quote:
-      "The fastest adoption we have seen for an internal tool. No one needed onboarding to start using it.",
-    author: "Director of Facilities",
-    org: "Multi-site Dental Group",
-  },
-];
-
 const FAQS = [
   {
     question: "Do people need an account to submit low-stock alerts?",
@@ -99,18 +84,18 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-white/10">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
           <p className="text-lg font-semibold tracking-tight">InventoryAlert</p>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
             <Link
               href="/login"
-              className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-slate-200 hover:border-white/40"
+              className="flex-1 rounded-lg border border-white/20 px-4 py-2 text-center text-sm font-medium text-slate-200 hover:border-white/40 sm:flex-none"
             >
               Sign in
             </Link>
             <Link
               href="/register"
-              className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+              className="flex-1 rounded-lg bg-cyan-400 px-4 py-2 text-center text-sm font-semibold text-slate-950 hover:bg-cyan-300 sm:flex-none"
             >
               Start free
             </Link>
@@ -121,28 +106,28 @@ export default async function HomePage() {
       <main>
         <section className="relative overflow-hidden border-b border-white/10">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_45%)]" />
-          <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+          <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
             <div>
               <p className="mb-4 inline-flex rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-medium uppercase tracking-wider text-cyan-200">
                 Reduce stockouts without adding friction
               </p>
-              <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
                 The fastest way to turn low inventory into action.
               </h1>
-              <p className="mt-6 max-w-2xl text-lg text-slate-300">
+              <p className="mt-5 max-w-2xl text-base text-slate-300 sm:mt-6 sm:text-lg">
                 InventoryAlert helps teams place QR labels on shelves and bins, so anyone can report
                 low stock in seconds and your team gets notified instantly.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/register"
-                  className="rounded-xl bg-cyan-400 px-6 py-3 text-center font-semibold text-slate-950 hover:bg-cyan-300"
+                  className="w-full rounded-xl bg-cyan-400 px-6 py-3 text-center font-semibold text-slate-950 hover:bg-cyan-300 sm:w-auto"
                 >
                   Create free workspace
                 </Link>
                 <Link
                   href="/login"
-                  className="rounded-xl border border-white/20 px-6 py-3 text-center font-semibold text-slate-100 hover:border-white/40"
+                  className="w-full rounded-xl border border-white/20 px-6 py-3 text-center font-semibold text-slate-100 hover:border-white/40 sm:w-auto"
                 >
                   View dashboard
                 </Link>
@@ -181,7 +166,7 @@ export default async function HomePage() {
         </section>
 
         <section className="border-b border-white/10 bg-slate-900">
-          <div className="mx-auto w-full max-w-6xl px-6 py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
             <h2 className="text-3xl font-semibold tracking-tight text-white">Built for real-world operations</h2>
             <p className="mt-3 max-w-3xl text-slate-300">
               Designed for busy teams that need a simple system people actually use. No heavy rollout,
@@ -202,26 +187,7 @@ export default async function HomePage() {
         </section>
 
         <section className="border-b border-white/10 bg-slate-950">
-          <div className="mx-auto w-full max-w-6xl px-6 py-16">
-            <h2 className="text-3xl font-semibold tracking-tight text-white">Proof from the floor</h2>
-            <div className="mt-8 grid gap-5 md:grid-cols-2">
-              {TESTIMONIALS.map((testimonial) => (
-                <blockquote
-                  key={testimonial.author}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-6"
-                >
-                  <p className="text-lg leading-7 text-slate-100">“{testimonial.quote}”</p>
-                  <footer className="mt-4 text-sm text-slate-300">
-                    {testimonial.author} · {testimonial.org}
-                  </footer>
-                </blockquote>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="border-b border-white/10 bg-slate-900">
-          <div className="mx-auto w-full max-w-6xl px-6 py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
             <h2 className="text-center text-3xl font-semibold tracking-tight text-white">
               Transparent pricing that scales with you
             </h2>
@@ -262,7 +228,7 @@ export default async function HomePage() {
         </section>
 
         <section className="bg-slate-950">
-          <div className="mx-auto w-full max-w-6xl px-6 py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
             <h2 className="text-3xl font-semibold tracking-tight text-white">Frequently asked questions</h2>
             <div className="mt-8 space-y-4">
               {FAQS.map((faq) => (
