@@ -15,6 +15,9 @@ export default function ItemForm({ item, mode }: Props) {
   const [description, setDescription] = useState(item?.description ?? "");
   const [alertEmail, setAlertEmail] = useState(item?.alertEmail ?? "");
   const [imageUrl, setImageUrl] = useState(item?.imageUrl ?? "");
+  const [lowStockThreshold, setLowStockThreshold] = useState(
+    item?.lowStockThreshold != null ? String(item.lowStockThreshold) : ""
+  );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,11 +47,13 @@ export default function ItemForm({ item, mode }: Props) {
     setError("");
     setLoading(true);
 
+    const threshold = lowStockThreshold ? parseInt(lowStockThreshold, 10) : null;
     const payload = {
       name,
       description: description || undefined,
       alertEmail,
       imageUrl: imageUrl || undefined,
+      lowStockThreshold: threshold && !isNaN(threshold) ? threshold : null,
     };
 
     const res = await fetch(
@@ -101,6 +106,23 @@ export default function ItemForm({ item, mode }: Props) {
           maxLength={500}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Low stock threshold
+        </label>
+        <input
+          type="number"
+          value={lowStockThreshold}
+          onChange={(e) => setLowStockThreshold(e.target.value)}
+          min={1}
+          max={9999}
+          placeholder="e.g. 5"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <p className="text-xs text-gray-400 mt-1">
+          Optional. Print this number on the label as a restock reminder.
+        </p>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">

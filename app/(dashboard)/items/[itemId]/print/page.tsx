@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { TIER_LIMITS } from "@/lib/tier";
 import PrintPageClient from "./PrintPageClient";
 
 export default async function PrintPage({
@@ -16,11 +17,16 @@ export default async function PrintPage({
 
   if (!item || item.userId !== session.user.id) notFound();
 
+  const canCustomizeLabels = TIER_LIMITS[session.user.tier].customLabels;
+
   return (
     <PrintPageClient
       itemId={item.id}
       itemName={item.name}
       qrCodeId={item.qrCodeId}
+      description={item.description}
+      lowStockThreshold={item.lowStockThreshold}
+      canCustomizeLabels={canCustomizeLabels}
     />
   );
 }

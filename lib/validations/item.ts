@@ -5,6 +5,7 @@ export const createItemSchema = z.object({
   description: z.string().max(500).optional(),
   imageUrl: z.string().url().optional().or(z.literal("")),
   alertEmail: z.string().email("Must be a valid email address"),
+  lowStockThreshold: z.number().int().min(1).max(9999).nullable().optional(),
 });
 
 export const updateItemSchema = createItemSchema.partial();
