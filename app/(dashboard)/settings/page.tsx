@@ -32,7 +32,7 @@ export default async function SettingsPage() {
       <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
 
       {/* Account */}
-      <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+      <section className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 space-y-3">
         <h2 className="font-semibold text-gray-900">Account</h2>
         <div className="text-sm text-gray-600">
           <p>
@@ -46,7 +46,7 @@ export default async function SettingsPage() {
       </section>
 
       {/* Plan */}
-      <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+      <section className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Current Plan</h2>
           <TierBadge tier={tier} />

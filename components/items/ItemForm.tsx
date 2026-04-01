@@ -140,11 +140,11 @@ export default function ItemForm({ item, mode }: Props) {
           <p className="text-xs text-blue-600 mt-1">Uploading…</p>
         )}
       </div>
-      <div className="flex gap-3 pt-2">
+      <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
         <button
           type="submit"
           disabled={loading || uploading}
-          className="bg-blue-600 text-white rounded-lg px-5 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="w-full sm:w-auto bg-blue-600 text-white rounded-lg px-5 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {loading
             ? mode === "create"
@@ -157,7 +157,7 @@ export default function ItemForm({ item, mode }: Props) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="border border-gray-300 text-gray-700 rounded-lg px-5 py-2 text-sm hover:bg-gray-50 transition-colors"
+          className="w-full sm:w-auto border border-gray-300 text-gray-700 rounded-lg px-5 py-2 text-sm hover:bg-gray-50 transition-colors"
         >
           Cancel
         </button>

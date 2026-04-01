@@ -51,7 +51,7 @@ export default function SettingsClient({ currentTier, hasSubscription }: Props) 
       {currentTier === "FREE" && (
         <div className="space-y-2">
           <p className="text-sm text-gray-600 font-medium">Upgrade your plan</p>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <button
               onClick={() => handleUpgrade("FAMILY")}
               disabled={!!loading}
@@ -75,7 +75,7 @@ export default function SettingsClient({ currentTier, hasSubscription }: Props) 
           <button
             onClick={() => handleUpgrade("ENTERPRISE")}
             disabled={!!loading}
-            className="flex-1 border border-purple-200 bg-purple-50 text-purple-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-100 disabled:opacity-50 transition-colors"
+            className="w-full sm:flex-1 border border-purple-200 bg-purple-50 text-purple-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-100 disabled:opacity-50 transition-colors"
           >
             {loading === "ENTERPRISE" ? "Loading…" : "Upgrade to Enterprise — $29/mo"}
           </button>
@@ -83,7 +83,7 @@ export default function SettingsClient({ currentTier, hasSubscription }: Props) 
             <button
               onClick={handlePortal}
               disabled={!!loading}
-              className="border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="w-full sm:w-auto border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               {loading === "portal" ? "Loading…" : "Manage billing"}
             </button>

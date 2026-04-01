@@ -77,7 +77,22 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
+            <ul className="divide-y divide-gray-100 md:hidden">
+              {recentRequests.map((r) => (
+                <li key={r.id} className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-gray-900 truncate">{r.item.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(r.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <StatusBadge status={r.status} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50 text-left">

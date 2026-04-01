@@ -19,7 +19,7 @@ export default async function DashboardLayout({
         <MobileHeader />
         <div className="flex flex-1">
           <Sidebar />
-          <main className="flex-1 overflow-auto pb-20 md:pb-0">
+          <main className="flex-1 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
             <div className="p-4 md:p-8">{children}</div>
           </main>
         </div>
