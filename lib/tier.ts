@@ -12,7 +12,7 @@ export const TIER_LIMITS: Record<
   },
   FAMILY: {
     maxItems: Infinity,
-    customLabels: false,
+    customLabels: true,
     label: "Family",
     price: "$9/mo",
   },

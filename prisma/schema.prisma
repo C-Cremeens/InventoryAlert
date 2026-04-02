@@ -49,6 +49,8 @@ model InventoryItem {
   qrCodeId          String            @unique @default(uuid())
   userId            String
 
+  lowStockThreshold Int?
+
   // Future: third-party shopping cart integration
   externalCartLink  String?
   externalPlatform  ExternalPlatform?
