@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { del } from "@vercel/blob";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateItemSchema } from "@/lib/validations/item";
@@ -59,6 +60,14 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const { itemId } = await params;
   const existing = await getOwnedItem(itemId, session.user.id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (existing.imageUrl) {
+    try {
+      await del(existing.imageUrl);
+    } catch (err) {
+      console.error("Failed to delete blob image:", err);
+    }
+  }
 
   await prisma.inventoryItem.delete({ where: { id: itemId } });
 

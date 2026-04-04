@@ -48,7 +48,9 @@
 ├── app/                          # Next.js App Router
 │   ├── (auth)/                   # Route group: unauthenticated pages
 │   │   ├── login/page.tsx
-│   │   └── register/page.tsx
+│   │   ├── register/page.tsx
+│   │   ├── forgot-password/page.tsx
+│   │   └── reset-password/page.tsx
 │   ├── (dashboard)/              # Route group: authenticated pages
 │   │   ├── layout.tsx            # Sidebar + mobile nav layout
 │   │   ├── dashboard/page.tsx
@@ -61,6 +63,8 @@
 │   ├── api/                      # API Route Handlers
 │   │   ├── auth/
 │   │   │   ├── register/route.ts
+│   │   │   ├── forgot-password/route.ts  # POST /api/auth/forgot-password (public)
+│   │   │   ├── reset-password/route.ts   # POST /api/auth/reset-password (public)
 │   │   │   └── [...nextauth]/route.ts
 │   │   ├── items/
 │   │   │   ├── route.ts          # GET /api/items, POST /api/items
@@ -95,7 +99,7 @@
 │   ├── auth.ts                   # NextAuth config (Credentials provider, JWT)
 │   ├── prisma.ts                 # Prisma client singleton
 │   ├── stripe.ts                 # Stripe client
-│   ├── resend.ts                 # Resend email client + sendAlertEmail()
+│   ├── resend.ts                 # Resend email client + sendAlertEmail() + sendPasswordResetEmail()
 │   ├── tier.ts                   # TIER_LIMITS, canCreateItem()
 │   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG
 │   └── validations/
@@ -276,8 +280,6 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 | 5 | Webhook error handling | Stripe webhook handler catches errors with `console.error` but no alerting/retry mechanism | Medium |
 | 6 | Item search/filter | No search or filtering on the items list page | Low |
 | 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
-| 8 | Image deletion | When an item is deleted, its image in Vercel Blob is not cleaned up | Low |
-| 9 | Password reset | No forgot-password / reset-password flow | Medium |
 | 10 | ENTERPRISE tier features | ENTERPRISE tier exists in the schema and pricing but has no differentiating features beyond FAMILY | Low |
 
 ---
@@ -287,9 +289,10 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 ### Working with GitHub Issues
 
 - **Finding work:** When looking for issues to work on, filter by the `ready` label (`mcp__github__list_issues` with `labels: ["ready"]`).
-- **Starting work:** When you begin work on an issue and make your first commit:
+- **Starting work:** As soon as the user confirms they want to start working on an issue (before writing any code):
   1. Remove the `ready` label from the issue (`mcp__github__issue_write` with `method: "update"`, removing `ready` from labels).
   2. Move the issue to **In Progress** on the project board using the GraphQL `updateProjectV2ItemFieldValue` mutation — project ID `PVT_kwHOBy3B684BTqg_`, field ID `PVTSSF_lAHOBy3B684BTqg_zhA3-wY`, option ID `b8f3c062`.
+  3. Only then proceed with planning and coding.
 
 ### Keeping CLAUDE.md Up to Date
 
