@@ -48,7 +48,9 @@
 ├── app/                          # Next.js App Router
 │   ├── (auth)/                   # Route group: unauthenticated pages
 │   │   ├── login/page.tsx
-│   │   └── register/page.tsx
+│   │   ├── register/page.tsx
+│   │   ├── forgot-password/page.tsx
+│   │   └── reset-password/page.tsx
 │   ├── (dashboard)/              # Route group: authenticated pages
 │   │   ├── layout.tsx            # Sidebar + mobile nav layout
 │   │   ├── dashboard/page.tsx
@@ -61,6 +63,8 @@
 │   ├── api/                      # API Route Handlers
 │   │   ├── auth/
 │   │   │   ├── register/route.ts
+│   │   │   ├── forgot-password/route.ts  # POST /api/auth/forgot-password (public)
+│   │   │   ├── reset-password/route.ts   # POST /api/auth/reset-password (public)
 │   │   │   └── [...nextauth]/route.ts
 │   │   ├── items/
 │   │   │   ├── route.ts          # GET /api/items, POST /api/items
@@ -95,7 +99,7 @@
 │   ├── auth.ts                   # NextAuth config (Credentials provider, JWT)
 │   ├── prisma.ts                 # Prisma client singleton
 │   ├── stripe.ts                 # Stripe client
-│   ├── resend.ts                 # Resend email client + sendAlertEmail()
+│   ├── resend.ts                 # Resend email client + sendAlertEmail() + sendPasswordResetEmail()
 │   ├── tier.ts                   # TIER_LIMITS, canCreateItem()
 │   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG
 │   └── validations/
@@ -277,7 +281,6 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 | 6 | Item search/filter | No search or filtering on the items list page | Low |
 | 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
 | 8 | Image deletion | When an item is deleted, its image in Vercel Blob is not cleaned up | Low |
-| 9 | Password reset | No forgot-password / reset-password flow | Medium |
 | 10 | ENTERPRISE tier features | ENTERPRISE tier exists in the schema and pricing but has no differentiating features beyond FAMILY | Low |
 
 ---
