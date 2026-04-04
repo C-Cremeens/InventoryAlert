@@ -290,9 +290,10 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 ### Working with GitHub Issues
 
 - **Finding work:** When looking for issues to work on, filter by the `ready` label (`mcp__github__list_issues` with `labels: ["ready"]`).
-- **Starting work:** When you begin work on an issue and make your first commit:
+- **Starting work:** As soon as the user confirms they want to start working on an issue (before writing any code):
   1. Remove the `ready` label from the issue (`mcp__github__issue_write` with `method: "update"`, removing `ready` from labels).
   2. Move the issue to **In Progress** on the project board using the GraphQL `updateProjectV2ItemFieldValue` mutation — project ID `PVT_kwHOBy3B684BTqg_`, field ID `PVTSSF_lAHOBy3B684BTqg_zhA3-wY`, option ID `b8f3c062`.
+  3. Only then proceed with planning and coding.
 
 ### Keeping CLAUDE.md Up to Date
 
