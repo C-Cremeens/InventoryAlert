@@ -104,7 +104,7 @@ export default async function HomePage() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden border-b border-white/10">
+        <section className="relative overflow-hidden border-b border-white/10 min-h-dvh flex items-center">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.15),transparent_45%)]" />
           <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
             <div className="scroll-reveal max-w-3xl">
