@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { del } from "@vercel/blob";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateItemSchema } from "@/lib/validations/item";
@@ -61,6 +62,10 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.inventoryItem.delete({ where: { id: itemId } });
+
+  if (existing.imageUrl) {
+    await del(existing.imageUrl);
+  }
 
   return NextResponse.json({ ok: true });
 }
