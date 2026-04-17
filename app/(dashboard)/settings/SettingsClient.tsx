@@ -45,24 +45,24 @@ export default function SettingsClient({ currentTier, hasSubscription }: Props) 
   return (
     <div className="space-y-3 pt-2">
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-error">{error}</p>
       )}
 
       {currentTier === "FREE" && (
         <div className="space-y-2">
-          <p className="text-sm text-gray-600 font-medium">Upgrade your plan</p>
+          <p className="text-sm text-on-surface-variant font-medium">Upgrade your plan</p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
               onClick={() => handleUpgrade("FAMILY")}
               disabled={!!loading}
-              className="flex-1 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-100 disabled:opacity-50 transition-colors"
+              className="flex-1 bg-primary text-on-primary rounded-full border-0 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {loading === "FAMILY" ? "Loading…" : "Family — $9/mo"}
             </button>
             <button
               onClick={() => handleUpgrade("ENTERPRISE")}
               disabled={!!loading}
-              className="flex-1 border border-purple-200 bg-purple-50 text-purple-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-100 disabled:opacity-50 transition-colors"
+              className="flex-1 bg-primary-container text-on-primary-container rounded-full border border-primary/20 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {loading === "ENTERPRISE" ? "Loading…" : "Enterprise — $29/mo"}
             </button>
@@ -75,7 +75,7 @@ export default function SettingsClient({ currentTier, hasSubscription }: Props) 
           <button
             onClick={() => handleUpgrade("ENTERPRISE")}
             disabled={!!loading}
-            className="w-full sm:flex-1 border border-purple-200 bg-purple-50 text-purple-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-purple-100 disabled:opacity-50 transition-colors"
+            className="w-full sm:flex-1 bg-primary-container text-on-primary-container rounded-full border border-primary/20 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
             {loading === "ENTERPRISE" ? "Loading…" : "Upgrade to Enterprise — $29/mo"}
           </button>
@@ -83,7 +83,7 @@ export default function SettingsClient({ currentTier, hasSubscription }: Props) 
             <button
               onClick={handlePortal}
               disabled={!!loading}
-              className="w-full sm:w-auto border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="w-full sm:w-auto border border-outline text-on-surface-variant rounded-full px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-50 transition-colors"
             >
               {loading === "portal" ? "Loading…" : "Manage billing"}
             </button>
@@ -95,7 +95,7 @@ export default function SettingsClient({ currentTier, hasSubscription }: Props) 
         <button
           onClick={handlePortal}
           disabled={!!loading}
-          className="border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          className="border border-outline text-on-surface-variant rounded-full px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-50 transition-colors"
         >
           {loading === "portal" ? "Loading…" : "Manage billing / Cancel"}
         </button>

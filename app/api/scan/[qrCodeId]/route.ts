@@ -15,6 +15,14 @@ export async function POST(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Item not found" }, { status: 404 });
   }
 
+  // If alert emails are disabled for this item, record the scan but skip email
+  if (item.alertEmailEnabled === false) {
+    await prisma.stockingRequest.create({
+      data: { itemId: item.id, emailSent: false },
+    });
+    return NextResponse.json({ alreadyNotified: false, itemName: item.name });
+  }
+
   // Check for a recent email-sent request within the last 60 minutes
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const recentEmailSent = await prisma.stockingRequest.findFirst({

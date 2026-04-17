@@ -279,7 +279,6 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 | 4 | Email error handling | `sendAlertEmail` errors are caught and logged (`console.error`) but the scan response still returns 200 — user gets no indication email failed | Medium |
 | 5 | Webhook error handling | Stripe webhook handler catches errors with `console.error` but no alerting/retry mechanism | Medium |
 | 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
-| 8 | Image deletion | When an item is deleted, its image in Vercel Blob is not cleaned up | Low |
 | 10 | ENTERPRISE tier features | ENTERPRISE tier exists in the schema and pricing but has no differentiating features beyond FAMILY | Low |
 
 ---

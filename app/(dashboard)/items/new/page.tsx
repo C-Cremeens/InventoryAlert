@@ -18,16 +18,16 @@ export default async function NewItemPage() {
     const limit = TIER_LIMITS[session.user.tier];
     return (
       <div className="max-w-lg">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">New Item</h1>
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 text-center">
-          <p className="font-semibold text-gray-900 mb-2">Item limit reached</p>
-          <p className="text-sm text-gray-600 mb-4">
+        <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">New Item</h1>
+        <div className="bg-error-container rounded-xl p-6 text-center">
+          <p className="font-semibold text-on-error-container mb-2">Item limit reached</p>
+          <p className="text-sm text-on-error-container mb-4">
             Your {limit.label} plan allows up to {limit.maxItems} items. You
             have {count}.
           </p>
           <Link
             href="/settings"
-            className="inline-block bg-orange-500 text-white rounded-lg px-5 py-2 text-sm font-medium hover:bg-orange-600 transition-colors"
+            className="inline-block bg-error text-on-error rounded-full px-5 py-2 text-sm font-medium hover:opacity-90 transition-colors"
           >
             Upgrade plan
           </Link>
@@ -38,7 +38,7 @@ export default async function NewItemPage() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">New Item</h1>
+      <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">New Item</h1>
       <ItemForm mode="create" />
     </div>
   );

@@ -61,6 +61,14 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const existing = await getOwnedItem(itemId, session.user.id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  if (existing.imageUrl) {
+    try {
+      await del(existing.imageUrl);
+    } catch (err) {
+      console.error("Failed to delete blob image:", err);
+    }
+  }
+
   await prisma.inventoryItem.delete({ where: { id: itemId } });
 
   if (existing.imageUrl) {

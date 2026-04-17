@@ -38,9 +38,9 @@ export default async function ItemsPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
+          <h1 className="text-2xl font-bold text-on-surface font-headline">Inventory</h1>
           {limit.maxItems !== Infinity && (
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-on-surface-variant mt-0.5">
               {count} / {limit.maxItems} items used
             </p>
           )}
@@ -48,14 +48,14 @@ export default async function ItemsPage({
         {atLimit ? (
           <Link
             href="/settings"
-            className="w-full sm:w-auto text-center bg-orange-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-orange-600 transition-colors"
+            className="w-full sm:w-auto text-center bg-secondary text-on-secondary rounded-full px-4 py-2 text-sm font-medium hover:opacity-90 transition-colors"
           >
             Upgrade to add more
           </Link>
         ) : (
           <Link
             href="/items/new"
-            className="w-full sm:w-auto text-center bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="w-full sm:w-auto text-center bg-primary text-on-primary rounded-full px-4 py-2 text-sm font-medium hover:bg-primary-container transition-colors"
           >
             + New item
           </Link>
@@ -66,20 +66,20 @@ export default async function ItemsPage({
 
       {items.length === 0 ? (
         search ? (
-          <div className="text-center py-20 text-gray-500">
-            <p className="text-lg font-medium text-gray-700 mb-2">
+          <div className="text-center py-20 text-on-surface-variant">
+            <p className="text-lg font-medium text-on-surface mb-2">
               No items match your search
             </p>
             <Link
               href="/items"
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-secondary hover:underline"
             >
               Clear search
             </Link>
           </div>
         ) : (
-          <div className="text-center py-20 text-gray-500">
-            <p className="text-lg font-medium text-gray-700 mb-2">
+          <div className="text-center py-20 text-on-surface-variant">
+            <p className="text-lg font-medium text-on-surface mb-2">
               No items yet
             </p>
             <p className="text-sm mb-6">
@@ -87,7 +87,7 @@ export default async function ItemsPage({
             </p>
             <Link
               href="/items/new"
-              className="bg-blue-600 text-white rounded-lg px-5 py-2 text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="bg-primary text-on-primary rounded-full px-4 py-2 text-sm font-medium hover:bg-primary-container transition-colors"
             >
               Create first item
             </Link>

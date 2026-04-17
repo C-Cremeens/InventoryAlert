@@ -27,9 +27,9 @@ const TABS: { label: string; value: RequestStatus | null }[] = [
 ];
 
 const statusStyles: Record<RequestStatus, string> = {
-  PENDING: "bg-yellow-50 text-yellow-700",
-  APPROVED: "bg-green-50 text-green-700",
-  DECLINED: "bg-red-50 text-red-700",
+  PENDING: "bg-tertiary-fixed/60 text-on-tertiary-container",
+  APPROVED: "bg-secondary-container/40 text-on-secondary-container",
+  DECLINED: "bg-error-container text-on-error-container",
 };
 
 export default function RequestsClient({ initialRequests, activeStatus }: Props) {
@@ -83,15 +83,15 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
     <div>
       {/* Tabs */}
       <div className="overflow-x-auto mb-5">
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 bg-surface-container rounded-2xl p-1 w-fit">
         {TABS.map((tab) => (
           <button
             key={tab.label}
             onClick={() => handleTabChange(tab.value)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-colors ${
               activeStatus === tab.value
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
             {tab.label}
@@ -101,28 +101,28 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
       </div>
 
       {requests.length === 0 ? (
-        <div className="text-center py-16 text-gray-500 bg-white border border-gray-200 rounded-xl">
+        <div className="text-center py-16 text-on-surface-variant bg-surface-container-lowest rounded-xl">
           <p className="text-sm">No requests found.</p>
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-surface-container-lowest rounded-xl overflow-hidden">
           <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-left">
-                <th className="px-4 py-3 font-medium text-gray-600">Item</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Requested</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Actions</th>
+              <tr className="border-b border-outline-variant bg-surface-container text-left">
+                <th className="px-4 py-3 font-medium text-on-surface-variant">Item</th>
+                <th className="px-4 py-3 font-medium text-on-surface-variant">Requested</th>
+                <th className="px-4 py-3 font-medium text-on-surface-variant">Status</th>
+                <th className="px-4 py-3 font-medium text-on-surface-variant">Actions</th>
               </tr>
             </thead>
             <tbody>
               {requests.map((r) => (
-                <tr key={r.id} className="border-b border-gray-50 last:border-0">
-                  <td className="px-4 py-3 font-medium text-gray-900">
+                <tr key={r.id} className="border-b border-outline-variant last:border-0">
+                  <td className="px-4 py-3 font-medium text-on-surface">
                     {r.item.name}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="px-4 py-3 text-on-surface-variant">
                     {new Date(r.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-3">
@@ -146,13 +146,13 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
             </tbody>
           </table>
           </div>
-          <ul className="divide-y divide-gray-100 md:hidden">
+          <ul className="divide-y divide-outline-variant md:hidden">
             {requests.map((r) => (
               <li key={r.id} className="px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium text-sm text-gray-900 truncate">{r.item.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="font-medium text-sm text-on-surface truncate">{r.item.name}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">
                       {new Date(r.createdAt).toLocaleString()}
                     </p>
                   </div>
@@ -197,7 +197,7 @@ function ActionButtons({
   mobile?: boolean;
 }) {
   if (requestStatus !== "PENDING") {
-    return <span className="text-xs text-gray-400">—</span>;
+    return <span className="text-xs text-on-surface-variant">—</span>;
   }
 
   return (
@@ -205,14 +205,14 @@ function ActionButtons({
       <button
         onClick={() => onApprove(requestId, "APPROVED")}
         disabled={loading === requestId}
-        className="px-3 py-2 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 disabled:opacity-50 transition-colors"
+        className="px-3 py-2 text-xs font-medium bg-secondary-container/30 text-on-secondary-container border border-secondary/20 rounded-lg hover:bg-secondary-container/50 disabled:opacity-50 transition-colors"
       >
         Approve
       </button>
       <button
         onClick={() => onDecline(requestId, "DECLINED")}
         disabled={loading === requestId}
-        className="px-3 py-2 text-xs font-medium bg-red-50 text-red-700 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50 transition-colors"
+        className="px-3 py-2 text-xs font-medium bg-error-container text-on-error-container border border-error/20 rounded-lg hover:opacity-80 disabled:opacity-50 transition-colors"
       >
         Decline
       </button>
