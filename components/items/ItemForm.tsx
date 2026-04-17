@@ -18,6 +18,9 @@ export default function ItemForm({ item, mode }: Props) {
   const [lowStockThreshold, setLowStockThreshold] = useState(
     item?.lowStockThreshold != null ? String(item.lowStockThreshold) : ""
   );
+  const [alertEmailEnabled, setAlertEmailEnabled] = useState(
+    item?.alertEmailEnabled ?? true
+  );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,6 +57,7 @@ export default function ItemForm({ item, mode }: Props) {
       alertEmail,
       imageUrl: imageUrl || undefined,
       lowStockThreshold: threshold && !isNaN(threshold) ? threshold : null,
+      alertEmailEnabled,
     };
 
     const res = await fetch(
@@ -78,13 +82,13 @@ export default function ItemForm({ item, mode }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-w-lg">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-error-container border border-error/20 text-on-error-container text-sm rounded-lg px-4 py-3">
           {error}
         </div>
       )}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Item name <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-on-surface-variant mb-1">
+          Item name <span className="text-error">*</span>
         </label>
         <input
           type="text"
@@ -92,11 +96,11 @@ export default function ItemForm({ item, mode }: Props) {
           onChange={(e) => setName(e.target.value)}
           required
           maxLength={100}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-on-surface-variant mb-1">
           Description
         </label>
         <textarea
@@ -104,11 +108,11 @@ export default function ItemForm({ item, mode }: Props) {
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           maxLength={500}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface resize-none"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-on-surface-variant mb-1">
           Low stock threshold
         </label>
         <input
@@ -118,37 +122,60 @@ export default function ItemForm({ item, mode }: Props) {
           min={1}
           max={9999}
           placeholder="e.g. 5"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
         />
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-outline mt-1">
           Optional. Print this number on the label as a restock reminder.
         </p>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Alert email <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-on-surface-variant mb-1">
+          Alert email <span className="text-error">*</span>
         </label>
         <input
           type="email"
           value={alertEmail}
           onChange={(e) => setAlertEmail(e.target.value)}
           required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
           placeholder="alerts@yourcompany.com"
         />
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-outline mt-1">
           This address receives low stock alerts when the QR code is scanned.
         </p>
       </div>
+      <div className="flex items-center justify-between py-1">
+        <div>
+          <p className="text-sm font-medium text-on-surface">Alert emails</p>
+          <p className="text-xs text-outline mt-0.5">
+            Send an email when this item&apos;s QR code is scanned
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={alertEmailEnabled}
+          onClick={() => setAlertEmailEnabled((v) => !v)}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+            alertEmailEnabled ? "bg-secondary" : "bg-outline-variant"
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+              alertEmailEnabled ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
+      </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-on-surface-variant mb-1">
           Image (optional)
         </label>
         {imageUrl && (
           <img
             src={imageUrl}
             alt="Item"
-            className="w-24 h-24 object-cover rounded-lg mb-2 border border-gray-200"
+            className="w-24 h-24 object-cover rounded-lg mb-2 border border-outline-variant"
           />
         )}
         <input
@@ -156,17 +183,17 @@ export default function ItemForm({ item, mode }: Props) {
           accept="image/jpeg,image/png,image/webp"
           onChange={handleImageChange}
           disabled={uploading}
-          className="block text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+          className="block text-sm text-on-surface-variant file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-surface-container file:text-on-surface-variant hover:file:bg-surface-container-high"
         />
         {uploading && (
-          <p className="text-xs text-blue-600 mt-1">Uploading…</p>
+          <p className="text-xs text-secondary mt-1">Uploading…</p>
         )}
       </div>
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
         <button
           type="submit"
           disabled={loading || uploading}
-          className="w-full sm:w-auto bg-blue-600 text-white rounded-lg px-5 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="w-full sm:w-auto bg-primary text-on-primary rounded-full px-5 py-2 text-sm font-medium hover:bg-primary-container disabled:opacity-50 transition-colors"
         >
           {loading
             ? mode === "create"
@@ -179,7 +206,7 @@ export default function ItemForm({ item, mode }: Props) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="w-full sm:w-auto border border-gray-300 text-gray-700 rounded-lg px-5 py-2 text-sm hover:bg-gray-50 transition-colors"
+          className="w-full sm:w-auto border border-outline text-on-surface rounded-full px-5 py-2 text-sm hover:bg-surface-container-low transition-colors"
         >
           Cancel
         </button>

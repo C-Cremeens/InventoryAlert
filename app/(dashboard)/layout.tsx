@@ -4,6 +4,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import MobileHeader from "@/components/layout/MobileHeader";
 import BottomNav from "@/components/layout/BottomNav";
 import { SessionProvider } from "next-auth/react";
+import Link from "next/link";
 
 export default async function DashboardLayout({
   children,
@@ -15,7 +16,7 @@ export default async function DashboardLayout({
 
   return (
     <SessionProvider session={session}>
-      <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen bg-background">
         <MobileHeader />
         <div className="flex flex-1">
           <Sidebar />
@@ -24,6 +25,13 @@ export default async function DashboardLayout({
           </main>
         </div>
         <BottomNav />
+        <Link
+          href="/items/new"
+          className="fixed bottom-28 right-6 z-40 md:hidden w-14 h-14 flex items-center justify-center bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg active:scale-95 transition-transform"
+          aria-label="Add new item"
+        >
+          <span className="material-symbols-outlined">add</span>
+        </Link>
       </div>
     </SessionProvider>
   );

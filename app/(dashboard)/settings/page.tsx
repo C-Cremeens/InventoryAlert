@@ -29,44 +29,44 @@ export default async function SettingsPage() {
 
   return (
     <div className="max-w-lg space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+      <h1 className="text-2xl font-bold text-on-surface font-headline">Settings</h1>
 
       {/* Account */}
-      <section className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 space-y-3">
-        <h2 className="font-semibold text-gray-900">Account</h2>
-        <div className="text-sm text-gray-600">
+      <section className="bg-surface-container-lowest rounded-xl shadow-sm p-4 sm:p-6 space-y-3">
+        <h2 className="font-semibold text-on-surface font-headline">Account</h2>
+        <div className="text-sm text-on-surface-variant">
           <p>
-            <span className="text-gray-400">Name:</span>{" "}
+            <span className="text-outline">Name:</span>{" "}
             {user.name ?? "—"}
           </p>
           <p className="mt-1">
-            <span className="text-gray-400">Email:</span> {user.email}
+            <span className="text-outline">Email:</span> {user.email}
           </p>
         </div>
       </section>
 
       {/* Plan */}
-      <section className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+      <section className="bg-surface-container-lowest rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Current Plan</h2>
+          <h2 className="font-semibold text-on-surface font-headline">Current Plan</h2>
           <TierBadge tier={tier} />
         </div>
 
-        <div className="text-sm text-gray-600 space-y-1">
+        <div className="text-sm text-on-surface-variant space-y-1">
           <p>
-            <span className="text-gray-400">Price:</span> {limit.price}
+            <span className="text-outline">Price:</span> {limit.price}
           </p>
           <p>
-            <span className="text-gray-400">Item limit:</span>{" "}
+            <span className="text-outline">Item limit:</span>{" "}
             {limit.maxItems === Infinity ? "Unlimited" : limit.maxItems}
           </p>
           <p>
-            <span className="text-gray-400">Items used:</span> {itemCount}
+            <span className="text-outline">Items used:</span> {itemCount}
             {limit.maxItems !== Infinity && ` / ${limit.maxItems}`}
           </p>
           {user.stripeCurrentPeriodEnd && (
             <p>
-              <span className="text-gray-400">Renews:</span>{" "}
+              <span className="text-outline">Renews:</span>{" "}
               {new Date(user.stripeCurrentPeriodEnd).toLocaleDateString()}
             </p>
           )}
@@ -75,15 +75,15 @@ export default async function SettingsPage() {
         {/* Progress bar for free tier */}
         {limit.maxItems !== Infinity && (
           <div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-500 rounded-full transition-all"
+                className="h-full bg-secondary rounded-full transition-all"
                 style={{
                   width: `${Math.min(100, (itemCount / limit.maxItems) * 100)}%`,
                 }}
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-outline mt-1">
               {itemCount} of {limit.maxItems} items used
             </p>
           </div>
