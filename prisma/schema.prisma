@@ -48,6 +48,7 @@ model InventoryItem {
   description       String?
   imageUrl          String?
   alertEmail        String
+  alertEmailEnabled Boolean           @default(true)
   qrCodeId          String            @unique @default(uuid())
   userId            String
 
