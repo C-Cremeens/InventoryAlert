@@ -278,7 +278,6 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 | 3 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium |
 | 4 | Email error handling | `sendAlertEmail` errors are caught and logged (`console.error`) but the scan response still returns 200 — user gets no indication email failed | Medium |
 | 5 | Webhook error handling | Stripe webhook handler catches errors with `console.error` but no alerting/retry mechanism | Medium |
-| 6 | Item search/filter | No search or filtering on the items list page | Low |
 | 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
 | 10 | ENTERPRISE tier features | ENTERPRISE tier exists in the schema and pricing but has no differentiating features beyond FAMILY | Low |
 
