@@ -1,9 +1,25 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { TIER_LIMITS } from "@/lib/tier";
 import ItemForm from "@/components/items/ItemForm";
-import QRCodeDisplay from "@/components/items/QRCodeDisplay";
-import Link from "next/link";
+import LabelSection from "@/components/print/LabelSection";
+import type { LabelLayout, LabelSize, QrPosition } from "@/lib/label";
+
+function parseLabelLayout(raw: unknown): LabelLayout | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const validSizes: LabelSize[] = ["3x1", "2x1", "1x1"];
+  const validPositions: QrPosition[] = ["left", "center", "right"];
+  if (
+    typeof r.size !== "string" || !validSizes.includes(r.size as LabelSize) ||
+    typeof r.qrPosition !== "string" || !validPositions.includes(r.qrPosition as QrPosition) ||
+    !Array.isArray(r.elements)
+  ) {
+    return null;
+  }
+  return { size: r.size as LabelSize, qrPosition: r.qrPosition as QrPosition, elements: r.elements };
+}
 
 export default async function EditItemPage({
   params,
@@ -18,26 +34,22 @@ export default async function EditItemPage({
 
   if (!item || item.userId !== session.user.id) notFound();
 
+  const canCustomizeLabels = TIER_LIMITS[session.user.tier].customLabels;
+  const savedLayout = parseLabelLayout(item.labelLayout);
+
   return (
     <div className="max-w-lg">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-2xl font-bold text-on-surface font-headline">Edit Item</h1>
-        <Link
-          href={`/items/${item.id}/print`}
-          target="_blank"
-          className="w-full sm:w-auto text-center border border-outline text-on-surface rounded-full px-4 py-2 text-sm hover:bg-surface-container-low transition-colors"
-        >
-          Print label
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">Edit Item</h1>
 
-      <div className="bg-surface-container-lowest rounded-xl p-5 flex flex-col items-center mb-6 shadow-sm">
-        <p className="text-xs text-on-surface-variant mb-3">QR Code</p>
-        <QRCodeDisplay qrCodeId={item.qrCodeId} size={180} />
-        <p className="text-xs text-outline mt-3 break-all text-center">
-          {process.env.NEXT_PUBLIC_BASE_URL}/scan/{item.qrCodeId}
-        </p>
-      </div>
+      <LabelSection
+        itemId={item.id}
+        qrCodeId={item.qrCodeId}
+        itemName={item.name}
+        description={item.description}
+        lowStockThreshold={item.lowStockThreshold}
+        savedLayout={savedLayout}
+        canCustomizeLabels={canCustomizeLabels}
+      />
 
       <ItemForm item={item} mode="edit" />
     </div>

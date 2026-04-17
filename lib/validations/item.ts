@@ -1,5 +1,20 @@
 import { z } from "zod";
 
+const textElementSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  x: z.number(),
+  y: z.number(),
+  fontSize: z.number(),
+  bold: z.boolean(),
+});
+
+const labelLayoutSchema = z.object({
+  size: z.enum(["3x1", "2x1", "1x1"]),
+  qrPosition: z.enum(["left", "center", "right"]),
+  elements: z.array(textElementSchema),
+});
+
 export const createItemSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional(),
@@ -9,7 +24,10 @@ export const createItemSchema = z.object({
   alertEmailEnabled: z.boolean().optional(),
 });
 
-export const updateItemSchema = createItemSchema.partial();
+export const updateItemSchema = createItemSchema.partial().extend({
+  labelLayout: labelLayoutSchema.nullable().optional(),
+});
 
 export type CreateItemInput = z.infer<typeof createItemSchema>;
 export type UpdateItemInput = z.infer<typeof updateItemSchema>;
+export type LabelLayoutInput = z.infer<typeof labelLayoutSchema>;
