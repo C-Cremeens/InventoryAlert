@@ -259,15 +259,6 @@ There is no test runner, no test directory, and no Jest/Vitest configuration. Th
 
 ---
 
-## README Update Instructions
-
-The current `README.md` is the default Next.js template with `Lets go` appended. It should be updated to include:
-- Project description and feature list
-- Prerequisites (Node, PostgreSQL, Stripe account, Resend API key)
-- `.env` setup instructions (reference `.env.example`)
-- `npm run dev`, `npm run db:migrate` quick start steps
-- Links to Stripe and Resend dashboard setup
-
 ---
 
 ## Known Gaps & TODOs
@@ -275,9 +266,6 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 | # | Area | Description | Priority |
 |---|---|---|---|
 | 1 | Testing | No tests exist — no test runner configured | High |
-| 2 | README | Still the default Next.js template | Medium |
-| 3 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium |
-| 4 | Email error handling | `sendAlertEmail` errors are caught and logged (`console.error`) but the scan response still returns 200 — user gets no indication email failed | Medium |
 | 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
 | 10 | ENTERPRISE tier features | ENTERPRISE tier exists in the schema and pricing but has no differentiating features beyond FAMILY | Low |
 

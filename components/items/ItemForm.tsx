@@ -21,6 +21,8 @@ export default function ItemForm({ item, mode }: Props) {
   const [alertEmailEnabled, setAlertEmailEnabled] = useState(
     item?.alertEmailEnabled ?? true
   );
+  const [externalCartLink, setExternalCartLink] = useState(item?.externalCartLink ?? "");
+  const [externalPlatform, setExternalPlatform] = useState<string>(item?.externalPlatform ?? "");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,6 +60,8 @@ export default function ItemForm({ item, mode }: Props) {
       imageUrl: imageUrl || undefined,
       lowStockThreshold: threshold && !isNaN(threshold) ? threshold : null,
       alertEmailEnabled,
+      externalCartLink: externalCartLink || undefined,
+      externalPlatform: externalPlatform || null,
     };
 
     const res = await fetch(
@@ -166,6 +170,42 @@ export default function ItemForm({ item, mode }: Props) {
             }`}
           />
         </button>
+      </div>
+      <div className="border-t border-outline-variant pt-5">
+        <p className="text-sm font-medium text-on-surface mb-1">Reorder link (optional)</p>
+        <p className="text-xs text-outline mb-3">
+          When your QR code is scanned, a &ldquo;Reorder now&rdquo; button will appear on the confirmation page.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">
+              Cart / reorder URL
+            </label>
+            <input
+              type="url"
+              value={externalCartLink}
+              onChange={(e) => setExternalCartLink(e.target.value)}
+              placeholder="https://www.amazon.com/dp/..."
+              className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">
+              Platform
+            </label>
+            <select
+              value={externalPlatform}
+              onChange={(e) => setExternalPlatform(e.target.value)}
+              className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
+            >
+              <option value="">— select —</option>
+              <option value="AMAZON">Amazon</option>
+              <option value="WALMART">Walmart</option>
+              <option value="SHOPIFY">Shopify</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
       </div>
       <div>
         <label className="block text-sm font-medium text-on-surface-variant mb-1">

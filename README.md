@@ -1,38 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# InventoryAlert
 
-## Getting Started
+A subscription-based SaaS inventory management system. Register inventory items, print QR code labels, and receive low-stock alert emails whenever a label is scanned.
 
-First, run the development server:
+## Features
+
+- Create inventory items with images, descriptions, and custom low-stock thresholds
+- Generate and print QR code labels in three sizes (3"×1", 2"×1", 1"×1") with a drag-and-drop text editor
+- Scan a QR code → low-stock alert email sent to the configured address + stocking request recorded
+- Review and approve/decline stocking requests in a dashboard
+- Tiered subscriptions (FREE / FAMILY / ENTERPRISE) enforced via Stripe
+- Direct reorder links on the scan page via external cart integration (Amazon, Walmart, Shopify, or custom)
+
+## Prerequisites
+
+- Node.js 20+
+- PostgreSQL 15+
+- [Stripe account](https://dashboard.stripe.com/) with two products created (FAMILY and ENTERPRISE)
+- [Resend account](https://resend.com/) with a verified sending domain
+
+## Environment Setup
+
+Copy `.env.example` to `.env.local` and fill in each value:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | Random 32-char string (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | Base URL of the app (e.g. `http://localhost:3000`) |
+| `NEXT_PUBLIC_BASE_URL` | Same as `NEXTAUTH_URL` — used for QR code URLs |
+| `RESEND_API_KEY` | Resend API key from [resend.com/api-keys](https://resend.com/api-keys) |
+| `RESEND_FROM_EMAIL` | Verified sender address in your Resend account |
+| `STRIPE_SECRET_KEY` | Secret key from [Stripe dashboard](https://dashboard.stripe.com/apikeys) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Publishable key from Stripe dashboard |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signing secret (see Stripe webhook setup below) |
+| `STRIPE_PRICE_FAMILY` | Price ID for the FAMILY plan |
+| `STRIPE_PRICE_ENTERPRISE` | Price ID for the ENTERPRISE plan |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token for image uploads |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Stripe Webhook Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Install the [Stripe CLI](https://stripe.com/docs/stripe-cli) and run `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+2. Copy the webhook signing secret printed by the CLI into `STRIPE_WEBHOOK_SECRET`
+3. In production, create a webhook endpoint in the Stripe dashboard pointing to `https://yourdomain.com/api/stripe/webhook` with events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
 
-## Learn More
+## Quick Start
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Install dependencies
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Run database migrations
+npm run db:migrate
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Start the development server
+npm run dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Available Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Script | Description |
+|---|---|
+| `npm run dev` | Start Next.js development server |
+| `npm run build` | Build for production |
+| `npm run start` | Start production server |
+| `npm run db:migrate` | Apply pending Prisma migrations |
+| `npm run db:studio` | Open Prisma Studio (database browser) |
 
-Lets go
+## Tech Stack
+
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · PostgreSQL · Prisma · NextAuth v5 · Stripe · Resend · Vercel Blob
