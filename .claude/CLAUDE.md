@@ -12,7 +12,7 @@
 **Core user flows:**
 1. Register / log in (email + password)
 2. Create inventory items with optional image, description, and low-stock threshold
-3. Print QR code labels (3 sizes: 3"×1", 2"×1", 1"×1") — FAMILY/ENTERPRISE only for custom sizing
+3. Print QR code labels (3 sizes: 3"×1", 2"×1", 1"×1") with a drag-and-drop text editor — FAMILY/ENTERPRISE only for editing/repositioning fields
 4. Share QR code with staff — scanning triggers email alert + stocking request creation
 5. Review and approve/decline stocking requests in the dashboard
 6. Manage subscription via Stripe portal
@@ -94,14 +94,15 @@
 │   │   ├── BottomNav.tsx
 │   │   └── TierBadge.tsx
 │   └── print/
-│       └── PrintLabel.tsx
+│       ├── LabelEditor.tsx       # Interactive drag-and-drop label canvas (FAMILY/ENTERPRISE)
+│       └── PrintLabel.tsx        # Print-only renderer — accepts TextElement[] with % positions
 ├── lib/
 │   ├── auth.ts                   # NextAuth config (Credentials provider, JWT)
 │   ├── prisma.ts                 # Prisma client singleton
 │   ├── stripe.ts                 # Stripe client
 │   ├── resend.ts                 # Resend email client + sendAlertEmail() + sendPasswordResetEmail()
 │   ├── tier.ts                   # TIER_LIMITS, canCreateItem()
-│   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG
+│   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG, TextElement, getDefaultTextElements()
 │   └── validations/
 │       ├── item.ts               # createItemSchema, updateItemSchema
 │       └── request.ts            # updateRequestStatusSchema

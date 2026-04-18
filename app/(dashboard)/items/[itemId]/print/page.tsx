@@ -25,7 +25,7 @@ export default async function PrintPage({
       itemName={item.name}
       qrCodeId={item.qrCodeId}
       description={item.description}
-      lowStockThreshold={item.lowStockThreshold}
+      lowStockThreshold={null}
       canCustomizeLabels={canCustomizeLabels}
     />
   );
