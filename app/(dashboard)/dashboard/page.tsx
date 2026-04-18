@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import TierBadge from "@/components/layout/TierBadge";
 import { TIER_LIMITS } from "@/lib/tier";
+import { fetchStripePrices } from "@/lib/stripe";
 
 export default async function DashboardPage() {
   const session = await auth();
   if (!session) return null;
 
-  const [itemCount, pendingRequests, recentRequests] = await Promise.all([
+  const [itemCount, pendingRequests, recentRequests, stripePrices] = await Promise.all([
     prisma.inventoryItem.count({ where: { userId: session.user.id } }),
     prisma.stockingRequest.count({
       where: { item: { userId: session.user.id }, status: "PENDING" },
@@ -19,10 +20,12 @@ export default async function DashboardPage() {
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    fetchStripePrices(),
   ]);
 
   const tier = session.user.tier;
   const limit = TIER_LIMITS[tier];
+  const currentPrice = tier === "FREE" ? limit.price : stripePrices[tier];
   const atLimit = limit.maxItems !== Infinity && itemCount >= limit.maxItems;
 
   return (
@@ -52,7 +55,7 @@ export default async function DashboardPage() {
         <StatCard
           label="Current Plan"
           value={limit.label}
-          sub={limit.price}
+          sub={currentPrice}
           href="/settings"
         />
       </div>
