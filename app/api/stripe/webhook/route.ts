@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { STRIPE_PRICES, STRIPE_PRODUCTS, stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import type Stripe from "stripe";
 import type { Tier } from "@prisma/client";
@@ -90,10 +90,22 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        const priceId = subscription.items.data[0]?.price.id;
+        const itemPrice = subscription.items.data[0]?.price;
+        const productId = typeof itemPrice?.product === "string" ? itemPrice.product : itemPrice?.product?.id;
+        const priceId = itemPrice?.id;
+
         let tier: Tier = "FREE";
-        if (priceId === process.env.STRIPE_PRICE_FAMILY) tier = "FAMILY";
-        else if (priceId === process.env.STRIPE_PRICE_ENTERPRISE) tier = "ENTERPRISE";
+        if (
+          (STRIPE_PRODUCTS.FAMILY && productId === STRIPE_PRODUCTS.FAMILY) ||
+          (!STRIPE_PRODUCTS.FAMILY && priceId === STRIPE_PRICES.FAMILY)
+        ) {
+          tier = "FAMILY";
+        } else if (
+          (STRIPE_PRODUCTS.ENTERPRISE && productId === STRIPE_PRODUCTS.ENTERPRISE) ||
+          (!STRIPE_PRODUCTS.ENTERPRISE && priceId === STRIPE_PRICES.ENTERPRISE)
+        ) {
+          tier = "ENTERPRISE";
+        }
 
         await prisma.user.update({
           where: { id: user.id },
