@@ -9,9 +9,7 @@ const schema = z.object({
   name: z.string().max(100).optional(),
   email: z.string().email(),
   password: z.string().min(8),
-  termsAccepted: z.literal(true, {
-    errorMap: () => ({ message: "You must accept the Terms of Service to register." }),
-  }),
+  termsAccepted: z.literal(true, { message: "You must accept the Terms of Service to register." }),
 });
 
 export async function POST(req: NextRequest) {
