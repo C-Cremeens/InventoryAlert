@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
             tier,
             stripeCustomerId: session.customer as string,
             stripeSubscriptionId: subscription.id,
-            stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            stripeCurrentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
           },
         });
 
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
           where: { id: user.id },
           data: {
             tier,
-            stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            stripeCurrentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
           },
         });
 

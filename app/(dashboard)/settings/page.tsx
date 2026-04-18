@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TIER_LIMITS } from "@/lib/tier";
+import { fetchStripePrices } from "@/lib/stripe";
 import TierBadge from "@/components/layout/TierBadge";
 import SettingsClient from "./SettingsClient";
 
@@ -8,7 +9,7 @@ export default async function SettingsPage() {
   const session = await auth();
   if (!session) return null;
 
-  const [user, itemCount] = await Promise.all([
+  const [user, itemCount, stripePrices] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -20,6 +21,7 @@ export default async function SettingsPage() {
       },
     }),
     prisma.inventoryItem.count({ where: { userId: session.user.id } }),
+    fetchStripePrices(),
   ]);
 
   if (!user) return null;
@@ -54,7 +56,8 @@ export default async function SettingsPage() {
 
         <div className="text-sm text-on-surface-variant space-y-1">
           <p>
-            <span className="text-outline">Price:</span> {limit.price}
+            <span className="text-outline">Price:</span>{" "}
+            {tier === "FREE" ? limit.price : stripePrices[tier]}
           </p>
           <p>
             <span className="text-outline">Item limit:</span>{" "}
@@ -92,6 +95,7 @@ export default async function SettingsPage() {
         <SettingsClient
           currentTier={tier}
           hasCustomer={!!user.stripeCustomerId}
+          stripePrices={stripePrices}
         />
       </section>
     </div>
