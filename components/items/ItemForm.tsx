@@ -29,6 +29,8 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
   const [scanAcknowledgement, setScanAcknowledgement] = useState(
     item?.scanAcknowledgement ?? ""
   );
+  const [externalCartLink, setExternalCartLink] = useState(item?.externalCartLink ?? "");
+  const [externalPlatform, setExternalPlatform] = useState<string>(item?.externalPlatform ?? "");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -74,6 +76,8 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
         alertEmailEnabled,
         scanCooldownMinutes: !isNaN(cooldown) ? cooldown : 60,
         scanAcknowledgement: scanAcknowledgement.trim() || undefined,
+        externalCartLink: externalCartLink || undefined,
+        externalPlatform: externalPlatform || null,
       };
 
       const res = await fetch(
@@ -234,6 +238,42 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
           </p>
         </div>
       </div>
+      <div className="border-t border-outline-variant pt-5">
+        <p className="text-sm font-medium text-on-surface mb-1">Reorder link (optional)</p>
+        <p className="text-xs text-outline mb-3">
+          When your QR code is scanned, a &ldquo;Reorder now&rdquo; button will appear on the confirmation page.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">
+              Cart / reorder URL
+            </label>
+            <input
+              type="url"
+              value={externalCartLink}
+              onChange={(e) => setExternalCartLink(e.target.value)}
+              placeholder="https://www.amazon.com/dp/..."
+              className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">
+              Platform
+            </label>
+            <select
+              value={externalPlatform}
+              onChange={(e) => setExternalPlatform(e.target.value)}
+              className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
+            >
+              <option value="">- select -</option>
+              <option value="AMAZON">Amazon</option>
+              <option value="WALMART">Walmart</option>
+              <option value="SHOPIFY">Shopify</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+      </div>
       <div>
         <label className="block text-sm font-medium text-on-surface-variant mb-1">
           Image (optional)
@@ -253,7 +293,7 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
           className="block text-sm text-on-surface-variant file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-surface-container file:text-on-surface-variant hover:file:bg-surface-container-high"
         />
         {uploading && (
-          <p className="text-xs text-secondary mt-1">Uploading…</p>
+          <p className="text-xs text-secondary mt-1">Uploading...</p>
         )}
       </div>
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
@@ -264,8 +304,8 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
         >
           {loading
             ? mode === "create"
-              ? "Creating…"
-              : "Saving…"
+              ? "Creating..."
+              : "Saving..."
             : mode === "create"
             ? "Create item"
             : "Save changes"}
