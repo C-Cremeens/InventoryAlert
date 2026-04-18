@@ -8,8 +8,7 @@ datasource db {
 
 enum Tier {
   FREE
-  FAMILY
-  ENTERPRISE
+  PRO
 }
 
 enum RequestStatus {

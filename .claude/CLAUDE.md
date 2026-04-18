@@ -7,12 +7,12 @@
 
 ## What the App Does
 
-**InventoryAlert** is a subscription-based SaaS inventory management system. Users register inventory items, each of which receives a unique QR code that can be printed as a physical label. When a QR code is scanned, the system sends a low-stock alert email to the configured address and records a `StockingRequest` in the database. A tiered subscription model (FREE / FAMILY / ENTERPRISE) enforces item limits and feature access, backed by Stripe for payment processing.
+**InventoryAlert** is a subscription-based SaaS inventory management system. Users register inventory items, each of which receives a unique QR code that can be printed as a physical label. When a QR code is scanned, the system sends a low-stock alert email to the configured address and records a `StockingRequest` in the database. A two-tier subscription model (FREE / PRO) enforces item limits and feature access, backed by Stripe for payment processing.
 
 **Core user flows:**
 1. Register / log in (email + password)
 2. Create inventory items with optional image, description, and low-stock threshold
-3. Print QR code labels (3 sizes: 3"×1", 2"×1", 1"×1") with a drag-and-drop text editor — FAMILY/ENTERPRISE only for editing/repositioning fields
+3. Print QR code labels (3 sizes: 3"×1", 2"×1", 1"×1") with a drag-and-drop text editor — PRO only for editing/repositioning fields
 4. Share QR code with staff — scanning triggers email alert + stocking request creation
 5. Review and approve/decline stocking requests in the dashboard
 6. Manage subscription via Stripe portal
@@ -100,7 +100,7 @@
 │   │   └── TierBadge.tsx
 │   ├── InstallBanner.tsx         # PWA install prompt (OS-aware, one-time dismissible)
 │   └── print/
-│       ├── LabelEditor.tsx       # Interactive drag-and-drop label canvas (FAMILY/ENTERPRISE)
+│       ├── LabelEditor.tsx       # Interactive drag-and-drop label canvas (PRO only)
 │       └── PrintLabel.tsx        # Print-only renderer — accepts TextElement[] with % positions
 ├── lib/
 │   ├── auth.ts                   # NextAuth config (Credentials provider, JWT)
@@ -289,7 +289,6 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 | 3 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium |
 | 4 | Email error handling | `sendAlertEmail` errors are caught and logged (`console.error`) but the scan response still returns 200 — user gets no indication email failed | Medium |
 | 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
-| 10 | ENTERPRISE tier features | ENTERPRISE tier exists in the schema and pricing but has no differentiating features beyond FAMILY | Low |
 
 ---
 

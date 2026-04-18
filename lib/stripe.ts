@@ -14,22 +14,19 @@ function getStripeSecretKey(): string | null {
 }
 
 export const STRIPE_PRICES = {
-  FAMILY: process.env.STRIPE_PRICE_FAMILY ?? "",
-  ENTERPRISE: process.env.STRIPE_PRICE_ENTERPRISE ?? "",
+  PRO: process.env.STRIPE_PRICE_PRO ?? "",
 } as const;
 
 export const STRIPE_PRODUCTS = {
-  FAMILY: process.env.STRIPE_PRODUCT_FAMILY,
-  ENTERPRISE: process.env.STRIPE_PRODUCT_ENTERPRISE,
+  PRO: process.env.STRIPE_PRODUCT_PRO,
 } as const;
 
-type PaidTier = "FAMILY" | "ENTERPRISE";
+type PaidTier = "PRO";
 
 export function isStripeConfigured(): boolean {
   return Boolean(
     getStripeSecretKey() &&
-    STRIPE_PRICES.FAMILY &&
-    STRIPE_PRICES.ENTERPRISE
+    STRIPE_PRICES.PRO
   );
 }
 
@@ -66,10 +63,9 @@ async function getDefaultPriceIdForProduct(productId: string): Promise<string | 
 }
 
 export async function getStripePriceIds(): Promise<Record<PaidTier, string>> {
-  const tiers: PaidTier[] = ["FAMILY", "ENTERPRISE"];
+  const tiers: PaidTier[] = ["PRO"];
   const fallback: Record<PaidTier, string> = {
-    FAMILY: STRIPE_PRICES.FAMILY,
-    ENTERPRISE: STRIPE_PRICES.ENTERPRISE,
+    PRO: STRIPE_PRICES.PRO,
   };
 
   const resolved = await Promise.all(
@@ -94,27 +90,21 @@ export async function getStripePriceIds(): Promise<Record<PaidTier, string>> {
 export async function fetchStripePrices(): Promise<Record<PaidTier, string>> {
   if (!isStripeConfigured()) {
     return {
-      FAMILY: TIER_LIMITS.FAMILY.price,
-      ENTERPRISE: TIER_LIMITS.ENTERPRISE.price,
+      PRO: TIER_LIMITS.PRO.price,
     };
   }
 
   try {
     const stripe = getStripeClient();
     const priceIds = await getStripePriceIds();
-    const [family, enterprise] = await Promise.all([
-      stripe.prices.retrieve(priceIds.FAMILY),
-      stripe.prices.retrieve(priceIds.ENTERPRISE),
-    ]);
+    const pro = await stripe.prices.retrieve(priceIds.PRO);
 
     return {
-      FAMILY: formatStripePrice(family),
-      ENTERPRISE: formatStripePrice(enterprise),
+      PRO: formatStripePrice(pro),
     };
   } catch {
     return {
-      FAMILY: TIER_LIMITS.FAMILY.price,
-      ENTERPRISE: TIER_LIMITS.ENTERPRISE.price,
+      PRO: TIER_LIMITS.PRO.price,
     };
   }
 }

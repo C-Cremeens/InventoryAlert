@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { Tier } from "@prisma/client";
 
 const schema = z.object({
-  tier: z.enum(["FAMILY", "ENTERPRISE"]),
+  tier: z.enum(["PRO"]),
 });
 
 export async function POST(req: NextRequest) {
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
   }
 
-  const tier = parsed.data.tier as Exclude<Tier, "FREE">;
+  const tier = parsed.data.tier as "PRO";
   const priceIds = await getStripePriceIds();
   const priceId = priceIds[tier];
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
