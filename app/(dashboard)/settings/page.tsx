@@ -15,7 +15,7 @@ export default async function SettingsPage() {
         email: true,
         name: true,
         tier: true,
-        stripeSubscriptionId: true,
+        stripeCustomerId: true,
         stripeCurrentPeriodEnd: true,
       },
     }),
@@ -91,7 +91,7 @@ export default async function SettingsPage() {
 
         <SettingsClient
           currentTier={tier}
-          hasSubscription={!!user.stripeSubscriptionId}
+          hasCustomer={!!user.stripeCustomerId}
         />
       </section>
     </div>
