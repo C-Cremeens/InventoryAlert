@@ -36,6 +36,7 @@
 | Email | Resend | ^6.9.4 |
 | File Storage | Vercel Blob | ^2.3.1 |
 | QR Code | qrcode | ^1.5.4 |
+| Push Notifications | web-push (VAPID) | ^3.x |
 
 > **Note:** This project uses **Next.js 16** with the App Router — APIs, conventions, and file structure may differ from older Next.js versions. Always read `node_modules/next/dist/docs/` before writing new Next.js code.
 
@@ -71,7 +72,11 @@
 │   │   │   └── [itemId]/route.ts # PATCH, DELETE /api/items/:id
 │   │   ├── requests/
 │   │   │   ├── route.ts          # GET /api/requests
-│   │   │   └── [requestId]/route.ts  # PATCH /api/requests/:id
+│   │   │   ├── [requestId]/route.ts  # PATCH /api/requests/:id
+│   │   │   └── stream/route.ts   # GET /api/requests/stream (SSE, authenticated)
+│   │   ├── push/
+│   │   │   ├── public-key/route.ts   # GET /api/push/public-key
+│   │   │   └── subscription/route.ts # POST / DELETE /api/push/subscription
 │   │   ├── scan/
 │   │   │   └── [qrCodeId]/route.ts   # POST /api/scan/:qrCodeId (public)
 │   │   ├── stripe/
@@ -93,6 +98,7 @@
 │   │   ├── MobileHeader.tsx
 │   │   ├── BottomNav.tsx
 │   │   └── TierBadge.tsx
+│   ├── InstallBanner.tsx         # PWA install prompt (OS-aware, one-time dismissible)
 │   └── print/
 │       ├── LabelEditor.tsx       # Interactive drag-and-drop label canvas (FAMILY/ENTERPRISE)
 │       └── PrintLabel.tsx        # Print-only renderer — accepts TextElement[] with % positions
@@ -101,15 +107,19 @@
 │   ├── prisma.ts                 # Prisma client singleton
 │   ├── stripe.ts                 # Stripe client
 │   ├── resend.ts                 # Resend email client + sendAlertEmail() + sendPasswordResetEmail()
+│   ├── push.ts                   # sendStockingPushNotification() via web-push (VAPID)
+│   ├── realtime.ts               # In-memory pub/sub for SSE stocking request events
 │   ├── tier.ts                   # TIER_LIMITS, canCreateItem()
 │   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG, TextElement, getDefaultTextElements()
 │   └── validations/
 │       ├── item.ts               # createItemSchema, updateItemSchema
 │       └── request.ts            # updateRequestStatusSchema
 ├── prisma/
-│   ├── schema.prisma             # DB schema: User, InventoryItem, StockingRequest
+│   ├── schema.prisma             # DB schema: User, InventoryItem, StockingRequest, PushSubscription
 │   └── migrations/               # Prisma migration history
-├── public/                       # Static assets
+├── public/
+│   ├── manifest.json             # PWA manifest (required for iOS web push)
+│   └── sw.js                     # Service worker: handles push events + notification clicks
 ├── .claude/
 │   └── CLAUDE.md                 # ← This file
 ├── .mcp.json.example             # MCP server config template
