@@ -5,10 +5,10 @@ import type { Tier } from "@prisma/client";
 
 interface Props {
   currentTier: Tier;
-  hasSubscription: boolean;
+  hasCustomer: boolean;
 }
 
-export default function SettingsClient({ currentTier, hasSubscription }: Props) {
+export default function SettingsClient({ currentTier, hasCustomer }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -71,33 +71,33 @@ export default function SettingsClient({ currentTier, hasSubscription }: Props) 
       )}
 
       {currentTier === "FAMILY" && (
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <button
             onClick={() => handleUpgrade("ENTERPRISE")}
             disabled={!!loading}
-            className="w-full sm:flex-1 bg-primary-container text-on-primary-container rounded-full border border-primary/20 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="flex-1 bg-primary-container text-on-primary-container rounded-full border border-primary/20 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
             {loading === "ENTERPRISE" ? "Loading…" : "Upgrade to Enterprise — $29/mo"}
           </button>
-          {hasSubscription && (
+          {hasCustomer && (
             <button
               onClick={handlePortal}
               disabled={!!loading}
-              className="w-full sm:w-auto border border-outline text-on-surface-variant rounded-full px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-50 transition-colors"
+              className="sm:w-auto border border-outline text-on-surface-variant rounded-full px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-50 transition-colors"
             >
-              {loading === "portal" ? "Loading…" : "Manage billing"}
+              {loading === "portal" ? "Loading…" : "Edit / Cancel"}
             </button>
           )}
         </div>
       )}
 
-      {currentTier === "ENTERPRISE" && hasSubscription && (
+      {currentTier === "ENTERPRISE" && hasCustomer && (
         <button
           onClick={handlePortal}
           disabled={!!loading}
           className="border border-outline text-on-surface-variant rounded-full px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-50 transition-colors"
         >
-          {loading === "portal" ? "Loading…" : "Manage billing / Cancel"}
+          {loading === "portal" ? "Loading…" : "Edit / Cancel"}
         </button>
       )}
     </div>

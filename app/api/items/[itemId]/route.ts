@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { del } from "@vercel/blob";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { updateItemSchema } from "@/lib/validations/item";
 
 type Params = { params: Promise<{ itemId: string }> };
@@ -40,13 +41,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     );
   }
 
+  const { labelLayout, ...rest } = parsed.data;
   const updated = await prisma.inventoryItem.update({
     where: { id: itemId },
     data: {
-      ...parsed.data,
-      imageUrl: parsed.data.imageUrl !== undefined
-        ? parsed.data.imageUrl || null
-        : undefined,
+      ...rest,
+      imageUrl: rest.imageUrl !== undefined ? rest.imageUrl || null : undefined,
+      // Prisma requires Prisma.JsonNull instead of plain null for nullable JSON fields
+      ...(labelLayout !== undefined && {
+        labelLayout: labelLayout === null ? Prisma.JsonNull : labelLayout,
+      }),
     },
   });
 

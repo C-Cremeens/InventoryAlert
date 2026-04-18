@@ -12,7 +12,7 @@
 **Core user flows:**
 1. Register / log in (email + password)
 2. Create inventory items with optional image, description, and low-stock threshold
-3. Print QR code labels (3 sizes: 3"×1", 2"×1", 1"×1") — FAMILY/ENTERPRISE only for custom sizing
+3. Print QR code labels (3 sizes: 3"×1", 2"×1", 1"×1") with a drag-and-drop text editor — FAMILY/ENTERPRISE only for editing/repositioning fields
 4. Share QR code with staff — scanning triggers email alert + stocking request creation
 5. Review and approve/decline stocking requests in the dashboard
 6. Manage subscription via Stripe portal
@@ -94,14 +94,15 @@
 │   │   ├── BottomNav.tsx
 │   │   └── TierBadge.tsx
 │   └── print/
-│       └── PrintLabel.tsx
+│       ├── LabelEditor.tsx       # Interactive drag-and-drop label canvas (FAMILY/ENTERPRISE)
+│       └── PrintLabel.tsx        # Print-only renderer — accepts TextElement[] with % positions
 ├── lib/
 │   ├── auth.ts                   # NextAuth config (Credentials provider, JWT)
 │   ├── prisma.ts                 # Prisma client singleton
 │   ├── stripe.ts                 # Stripe client
 │   ├── resend.ts                 # Resend email client + sendAlertEmail() + sendPasswordResetEmail()
 │   ├── tier.ts                   # TIER_LIMITS, canCreateItem()
-│   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG
+│   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG, TextElement, getDefaultTextElements()
 │   └── validations/
 │       ├── item.ts               # createItemSchema, updateItemSchema
 │       └── request.ts            # updateRequestStatusSchema
@@ -277,7 +278,6 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 | 2 | README | Still the default Next.js template | Medium |
 | 3 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium |
 | 4 | Email error handling | `sendAlertEmail` errors are caught and logged (`console.error`) but the scan response still returns 200 — user gets no indication email failed | Medium |
-| 5 | Webhook error handling | Stripe webhook handler catches errors with `console.error` but no alerting/retry mechanism | Medium |
 | 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
 | 10 | ENTERPRISE tier features | ENTERPRISE tier exists in the schema and pricing but has no differentiating features beyond FAMILY | Low |
 

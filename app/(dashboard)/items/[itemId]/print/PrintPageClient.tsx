@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import PrintLabel from "@/components/print/PrintLabel";
-import { LABEL_SIZES, LABEL_SIZE_CONFIG } from "@/lib/label";
-import type { LabelSize } from "@/lib/label";
+import LabelEditor from "@/components/print/LabelEditor";
+import { LABEL_SIZES, LABEL_SIZE_CONFIG, getDefaultTextElements } from "@/lib/label";
+import type { LabelSize, TextElement } from "@/lib/label";
 
 interface Props {
   itemId: string;
@@ -23,110 +24,86 @@ export default function PrintPageClient({
   canCustomizeLabels,
 }: Props) {
   const [size, setSize] = useState<LabelSize>("3x1");
-  const [showDescription, setShowDescription] = useState(false);
-  const [showLowStock, setShowLowStock] = useState(false);
 
-  const labelProps = {
-    itemName,
-    qrCodeId,
-    size,
-    description,
-    lowStockThreshold,
-    showDescription: canCustomizeLabels && showDescription,
-    showLowStock: canCustomizeLabels && showLowStock,
+  const [elements, setElements] = useState<TextElement[]>(() =>
+    getDefaultTextElements({ itemName, description, lowStockThreshold, size })
+  );
+
+  const handleSizeChange = (newSize: LabelSize) => {
+    setSize(newSize);
+    setElements(getDefaultTextElements({ itemName, description, lowStockThreshold, size: newSize }));
   };
-
-  const hasContentOptions = description || lowStockThreshold;
 
   return (
     <>
       {/* Screen view */}
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-6 print:hidden">
-        {/* Controls */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 w-full max-w-sm">
-          {/* Size selector */}
-          <p className="text-sm font-medium text-gray-700 mb-2">Label size</p>
+      <div className="print:hidden max-w-sm">
+        <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">Print Label</h1>
+
+        {/* Size selector */}
+        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 mb-4 shadow-sm">
+          <p className="text-sm font-medium text-on-surface mb-3">Label size</p>
           <div className="flex gap-2">
             {LABEL_SIZES.map((s) => (
               <button
                 key={s}
-                onClick={() => setSize(s)}
-                className={`flex-1 py-1.5 px-2 rounded text-xs font-medium border transition-colors ${
+                onClick={() => handleSizeChange(s)}
+                className={`flex-1 py-2 px-2 rounded-full text-xs font-medium border transition-colors ${
                   size === s
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    ? "bg-primary text-on-primary border-primary"
+                    : "bg-surface text-on-surface border-outline-variant hover:bg-surface-container-low"
                 }`}
               >
                 {LABEL_SIZE_CONFIG[s].label}
               </button>
             ))}
           </div>
+        </div>
 
-          {/* Content toggles — paid plans only */}
+        {/* Editor / Preview */}
+        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 mb-4 shadow-sm">
+          <p className="text-sm font-medium text-on-surface mb-4">
+            {canCustomizeLabels ? "Edit your label" : "Preview"}
+          </p>
+
           {canCustomizeLabels ? (
-            <div className="mt-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">Label content</p>
-              {hasContentOptions ? (
-                <div className="space-y-2">
-                  {description && (
-                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showDescription}
-                        onChange={(e) => setShowDescription(e.target.checked)}
-                        className="rounded"
-                      />
-                      Show description
-                    </label>
-                  )}
-                  {lowStockThreshold && (
-                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showLowStock}
-                        onChange={(e) => setShowLowStock(e.target.checked)}
-                        className="rounded"
-                      />
-                      Show low stock reminder (below {lowStockThreshold})
-                    </label>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400">
-                  Add a description or low stock threshold to this item to show them on the label.
-                </p>
-              )}
-            </div>
+            <LabelEditor
+              qrCodeId={qrCodeId}
+              size={size}
+              qrPosition="left"
+              elements={elements}
+              onChange={setElements}
+            />
           ) : (
-            <p className="mt-3 text-xs text-gray-400">
-              Upgrade to a paid plan to add description and low stock reminders to labels.
-            </p>
+            <div className="flex flex-col items-center gap-3">
+              <PrintLabel qrCodeId={qrCodeId} size={size} elements={elements} />
+              <p className="text-xs text-on-surface-variant text-center">
+                Upgrade to a paid plan to edit and reposition label fields.
+              </p>
+            </div>
           )}
         </div>
 
-        {/* Preview */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <p className="text-xs text-gray-500 mb-3 text-center">Preview</p>
-          <PrintLabel {...labelProps} />
+        {/* Actions */}
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => window.print()}
+            className="w-full bg-primary text-on-primary rounded-full px-6 py-3 text-sm font-medium hover:bg-primary-container hover:text-on-primary-container transition-colors"
+          >
+            Print label
+          </button>
+          <a
+            href={`/items/${itemId}`}
+            className="text-sm text-on-surface-variant hover:text-on-surface text-center transition-colors"
+          >
+            ← Back to item
+          </a>
         </div>
-
-        <button
-          onClick={() => window.print()}
-          className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm font-medium hover:bg-blue-700 transition-colors"
-        >
-          Print label
-        </button>
-        <a
-          href={`/items/${itemId}`}
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
-          ← Back to item
-        </a>
       </div>
 
       {/* Print-only view */}
       <div className="hidden print:block">
-        <PrintLabel {...labelProps} />
+        <PrintLabel qrCodeId={qrCodeId} size={size} elements={elements} />
       </div>
     </>
   );
