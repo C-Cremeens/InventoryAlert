@@ -6,7 +6,7 @@ import type { Tier } from "@prisma/client";
 interface Props {
   currentTier: Tier;
   hasCustomer: boolean;
-  stripePrices: { FAMILY: string; ENTERPRISE: string };
+  stripePrices: { PRO: string };
   hasPushSubscription: boolean;
 }
 
@@ -33,7 +33,7 @@ export default function SettingsClient({
   const [error, setError] = useState("");
   const [pushEnabled, setPushEnabled] = useState(hasPushSubscription);
 
-  async function handleUpgrade(tier: "FAMILY" | "ENTERPRISE") {
+  async function handleUpgrade(tier: "PRO") {
     setError("");
     setLoading(tier);
     const res = await fetch("/api/stripe/checkout", {
@@ -175,53 +175,23 @@ export default function SettingsClient({
       {currentTier === "FREE" && (
         <div className="space-y-2">
           <p className="text-sm text-on-surface-variant font-medium">Upgrade your plan</p>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              onClick={() => handleUpgrade("FAMILY")}
-              disabled={!!loading}
-              className="flex-1 bg-primary text-on-primary rounded-full border-0 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {loading === "FAMILY" ? "Loading…" : `Family — ${stripePrices.FAMILY}`}
-            </button>
-            <button
-              onClick={() => handleUpgrade("ENTERPRISE")}
-              disabled={!!loading}
-              className="flex-1 bg-primary-container text-on-primary-container rounded-full border border-primary/20 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {loading === "ENTERPRISE" ? "Loading…" : `Enterprise — ${stripePrices.ENTERPRISE}`}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {currentTier === "FAMILY" && (
-        <div className="flex flex-col gap-2 sm:flex-row">
           <button
-            onClick={() => handleUpgrade("ENTERPRISE")}
+            onClick={() => handleUpgrade("PRO")}
             disabled={!!loading}
-            className="flex-1 bg-primary-container text-on-primary-container rounded-full border border-primary/20 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="w-full bg-primary text-on-primary rounded-full border-0 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
-            {loading === "ENTERPRISE" ? "Loading…" : `Upgrade to Enterprise — ${stripePrices.ENTERPRISE}`}
+            {loading === "PRO" ? "Loading…" : `Upgrade to Pro — ${stripePrices.PRO}`}
           </button>
-          {hasCustomer && (
-            <button
-              onClick={handlePortal}
-              disabled={!!loading}
-              className="sm:w-auto border border-outline text-on-surface-variant rounded-full px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-50 transition-colors"
-            >
-              {loading === "portal" ? "Loading…" : "Edit / Cancel"}
-            </button>
-          )}
         </div>
       )}
 
-      {currentTier === "ENTERPRISE" && hasCustomer && (
+      {currentTier === "PRO" && hasCustomer && (
         <button
           onClick={handlePortal}
           disabled={!!loading}
           className="border border-outline text-on-surface-variant rounded-full px-4 py-2 text-sm hover:bg-surface-container disabled:opacity-50 transition-colors"
         >
-          {loading === "portal" ? "Loading…" : "Edit / Cancel"}
+          {loading === "portal" ? "Loading…" : "Manage subscription"}
         </button>
       )}
     </div>

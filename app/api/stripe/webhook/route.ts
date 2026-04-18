@@ -101,15 +101,10 @@ export async function POST(req: NextRequest) {
 
         let tier: Tier = "FREE";
         if (
-          (STRIPE_PRODUCTS.FAMILY && productId === STRIPE_PRODUCTS.FAMILY) ||
-          (!STRIPE_PRODUCTS.FAMILY && priceId === STRIPE_PRICES.FAMILY)
+          (STRIPE_PRODUCTS.PRO && productId === STRIPE_PRODUCTS.PRO) ||
+          (!STRIPE_PRODUCTS.PRO && priceId === STRIPE_PRICES.PRO)
         ) {
-          tier = "FAMILY";
-        } else if (
-          (STRIPE_PRODUCTS.ENTERPRISE && productId === STRIPE_PRODUCTS.ENTERPRISE) ||
-          (!STRIPE_PRODUCTS.ENTERPRISE && priceId === STRIPE_PRICES.ENTERPRISE)
-        ) {
-          tier = "ENTERPRISE";
+          tier = "PRO";
         }
 
         await prisma.user.update({

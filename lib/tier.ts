@@ -10,16 +10,10 @@ export const TIER_LIMITS: Record<
     label: "Free",
     price: "$0/mo",
   },
-  FAMILY: {
+  PRO: {
     maxItems: Infinity,
     customLabels: true,
-    label: "Family",
-    price: "$9/mo",
-  },
-  ENTERPRISE: {
-    maxItems: Infinity,
-    customLabels: true,
-    label: "Enterprise",
+    label: "Pro",
     price: "$29/mo",
   },
 };

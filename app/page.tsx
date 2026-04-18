@@ -22,17 +22,11 @@ const PRICING_TIERS: TierDisplay[] = [
     highlight: false,
   },
   {
-    key: "FAMILY",
-    description: "For growing operations that need unlimited inventory and faster response loops.",
-    cta: "Choose Family",
+    key: "PRO",
+    description: "Unlimited inventory, custom label workflows, and priority support.",
+    cta: "Get Pro",
     highlight: true,
-    badge: "Best value",
-  },
-  {
-    key: "ENTERPRISE",
-    description: "For multi-location teams that need branded workflows and advanced control.",
-    cta: "Talk to sales",
-    highlight: false,
+    badge: "Most popular",
   },
 ];
 
@@ -84,8 +78,7 @@ export default async function HomePage() {
 
   const liveTierLimits = {
     ...TIER_LIMITS,
-    FAMILY: { ...TIER_LIMITS.FAMILY, price: stripePrices.FAMILY },
-    ENTERPRISE: { ...TIER_LIMITS.ENTERPRISE, price: stripePrices.ENTERPRISE },
+    PRO: { ...TIER_LIMITS.PRO, price: stripePrices.PRO },
   };
 
   return (
@@ -206,7 +199,7 @@ export default async function HomePage() {
             <p className="scroll-reveal mx-auto mt-3 max-w-2xl text-center text-slate-300">
               Start free, grow as needed, and keep predictable costs as your operations expand.
             </p>
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
+            <div className="mt-10 grid gap-6 md:grid-cols-2">
               {PRICING_TIERS.map((tierDisplay) => {
                 const tier = liveTierLimits[tierDisplay.key];
                 const [price, period] = tier.price.split("/");
@@ -230,7 +223,7 @@ export default async function HomePage() {
                       "QR label generation",
                       "Instant email alerts",
                       "Request tracking dashboard",
-                      tier.customLabels ? "Custom labels" : "Custom labels (Enterprise only)",
+                      tier.customLabels ? "Custom labels" : "Custom labels (Pro only)",
                     ]}
                   />
                 );

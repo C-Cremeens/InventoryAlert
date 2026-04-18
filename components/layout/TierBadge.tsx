@@ -3,8 +3,7 @@ import { TIER_LIMITS } from "@/lib/tier";
 
 const colors: Record<Tier, string> = {
   FREE: "bg-surface-container-high text-on-surface-variant",
-  FAMILY: "bg-secondary-container/40 text-on-secondary-container",
-  ENTERPRISE: "bg-primary-fixed text-on-primary-fixed",
+  PRO: "bg-primary-fixed text-on-primary-fixed",
 };
 
 export default function TierBadge({ tier }: { tier: Tier }) {
