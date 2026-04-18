@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import QRCode from "qrcode";
 import { LABEL_SIZE_CONFIG } from "@/lib/label";
 import type { LabelSize, TextElement, QrPosition } from "@/lib/label";
@@ -30,12 +30,27 @@ export default function LabelEditor({ qrCodeId, size, qrPosition, elements, onCh
   const config = LABEL_SIZE_CONFIG[size];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const url = `${baseUrl}/scan/${qrCodeId}`;
 
-  // Derive on-screen dimensions preserving label aspect ratio, capped at MAX_EDITOR_WIDTH
+  const [availableWidth, setAvailableWidth] = useState<number>(MAX_EDITOR_WIDTH);
+
+  useLayoutEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    setAvailableWidth(el.clientWidth || MAX_EDITOR_WIDTH);
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      if (w > 0) setAvailableWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Derive on-screen dimensions preserving label aspect ratio, capped at available container width
   const labelAspect = parseFloat(config.width) / parseFloat(config.height);
-  const editorW = Math.min(MAX_EDITOR_WIDTH, Math.round(labelAspect * 180));
+  const editorW = Math.min(availableWidth, Math.round(labelAspect * 180));
   const editorH = Math.round(editorW / labelAspect);
 
   // QR code scaled proportionally to the canvas
@@ -146,7 +161,7 @@ export default function LabelEditor({ qrCodeId, size, qrPosition, elements, onCh
   const selectedEl = elements.find((e) => e.id === editingId);
 
   return (
-    <div className="flex flex-col items-start gap-3 w-full">
+    <div ref={wrapperRef} className="flex flex-col items-start gap-3 w-full">
       {/* Canvas */}
       <div
         ref={containerRef}
