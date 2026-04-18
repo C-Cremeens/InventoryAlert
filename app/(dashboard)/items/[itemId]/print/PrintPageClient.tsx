@@ -103,7 +103,7 @@ export default function PrintPageClient({
 
       {/* Print-only view */}
       <div className="hidden print:block">
-        <PrintLabel qrCodeId={qrCodeId} size={size} elements={elements} />
+        <PrintLabel qrCodeId={qrCodeId} size={size} elements={elements} isPrintTarget />
       </div>
     </>
   );
