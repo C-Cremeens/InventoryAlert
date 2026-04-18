@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { STRIPE_PRICES, STRIPE_PRODUCTS, stripe } from "@/lib/stripe";
+import { STRIPE_PRICES, STRIPE_PRODUCTS, getStripeClient, isStripeConfigured } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import type Stripe from "stripe";
 import type { Tier } from "@prisma/client";
@@ -16,6 +16,11 @@ function logWebhook(
 }
 
 export async function POST(req: NextRequest) {
+  if (!isStripeConfigured()) {
+    return NextResponse.json({ error: "Stripe is not configured." }, { status: 503 });
+  }
+
+  const stripe = getStripeClient();
   const body = await req.text(); // Must read raw body before any parsing
   const sig = req.headers.get("stripe-signature");
 

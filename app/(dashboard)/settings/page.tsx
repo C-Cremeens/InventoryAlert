@@ -4,6 +4,7 @@ import { TIER_LIMITS } from "@/lib/tier";
 import { fetchStripePrices } from "@/lib/stripe";
 import TierBadge from "@/components/layout/TierBadge";
 import SettingsClient from "./SettingsClient";
+import { Prisma } from "@prisma/client";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -22,7 +23,18 @@ export default async function SettingsPage() {
     }),
     prisma.inventoryItem.count({ where: { userId: session.user.id } }),
     fetchStripePrices(),
-    prisma.pushSubscription.count({ where: { userId: session.user.id } }),
+    prisma.pushSubscription.count({ where: { userId: session.user.id } }).catch((error) => {
+      // Gracefully degrade if the PushSubscription table isn't available yet
+      // (e.g. database migration lag) so Settings can still render.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2021"
+      ) {
+        return 0;
+      }
+
+      throw error;
+    }),
   ]);
 
   if (!user) return null;
