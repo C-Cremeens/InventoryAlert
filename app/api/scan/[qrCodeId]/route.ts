@@ -70,8 +70,6 @@ export async function POST(_req: NextRequest, { params }: Params) {
       alreadyNotified: false,
       itemName: item.name,
       acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
-      externalCartLink: item.externalCartLink ?? null,
-      externalPlatform: item.externalPlatform ?? null,
       emailFailed: false,
     });
   }
@@ -106,8 +104,6 @@ export async function POST(_req: NextRequest, { params }: Params) {
       itemName: item.name,
       acknowledgementMessage:
         scanAcknowledgement || defaultAcknowledgements.alreadyNotified,
-      externalCartLink: item.externalCartLink ?? null,
-      externalPlatform: item.externalPlatform ?? null,
       emailFailed: false,
     });
   }
@@ -137,8 +133,6 @@ export async function POST(_req: NextRequest, { params }: Params) {
     alreadyNotified: false,
     itemName: item.name,
     acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
-    externalCartLink: item.externalCartLink ?? null,
-    externalPlatform: item.externalPlatform ?? null,
     emailFailed,
   });
 }
