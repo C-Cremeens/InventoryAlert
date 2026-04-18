@@ -33,15 +33,20 @@ export default function ItemForm({ item, mode }: Props) {
       return;
     }
     setUploading(true);
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: form });
-    const data = await res.json();
-    setUploading(false);
-    if (res.ok) {
-      setImageUrl(data.url);
-    } else {
-      setError(data.error || "Upload failed.");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = await res.json();
+      setUploading(false);
+      if (res.ok) {
+        setImageUrl(data.url);
+      } else {
+        setError(data.error || "Upload failed.");
+      }
+    } catch {
+      setUploading(false);
+      setError("Upload failed. Please try again.");
     }
   }
 
@@ -49,33 +54,37 @@ export default function ItemForm({ item, mode }: Props) {
     e.preventDefault();
     setError("");
     setLoading(true);
+    try {
+      const threshold = lowStockThreshold ? parseInt(lowStockThreshold, 10) : null;
+      const payload = {
+        name,
+        description: description || undefined,
+        alertEmail,
+        imageUrl: imageUrl || undefined,
+        lowStockThreshold: threshold && !isNaN(threshold) ? threshold : null,
+        alertEmailEnabled,
+      };
 
-    const threshold = lowStockThreshold ? parseInt(lowStockThreshold, 10) : null;
-    const payload = {
-      name,
-      description: description || undefined,
-      alertEmail,
-      imageUrl: imageUrl || undefined,
-      lowStockThreshold: threshold && !isNaN(threshold) ? threshold : null,
-      alertEmailEnabled,
-    };
+      const res = await fetch(
+        mode === "create" ? "/api/items" : `/api/items/${item!.id}`,
+        {
+          method: mode === "create" ? "POST" : "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      const data = await res.json();
+      setLoading(false);
 
-    const res = await fetch(
-      mode === "create" ? "/api/items" : `/api/items/${item!.id}`,
-      {
-        method: mode === "create" ? "POST" : "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      if (!res.ok) {
+        setError(data.error || "Something went wrong.");
+      } else {
+        router.push("/items");
+        router.refresh();
       }
-    );
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      setError(data.error || "Something went wrong.");
-    } else {
-      router.push("/items");
-      router.refresh();
+    } catch {
+      setLoading(false);
+      setError("An unexpected error occurred. Please try again.");
     }
   }
 
