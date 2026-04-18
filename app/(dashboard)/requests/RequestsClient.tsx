@@ -14,6 +14,15 @@ interface Request {
   item: { name: string; id: string };
 }
 
+interface RealtimeEvent {
+  requestId: string;
+  itemId: string;
+  itemName: string;
+  status: RequestStatus;
+  emailSent: boolean;
+  createdAt: string;
+}
+
 interface Props {
   initialRequests: Request[];
   activeStatus: RequestStatus | null;
@@ -36,6 +45,7 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
   const router = useRouter();
   const [requests, setRequests] = useState(initialRequests);
   const [loading, setLoading] = useState<string | null>(null);
+  const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "offline">("connecting");
 
   // Sync local state when the server sends new filtered data after navigation
   useEffect(() => {
@@ -51,6 +61,56 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
       }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const source = new EventSource("/api/requests/stream");
+
+    source.addEventListener("connected", () => {
+      setLiveStatus("live");
+    });
+
+    source.addEventListener("stocking-request", (event) => {
+      setLiveStatus("live");
+      const payload = JSON.parse((event as MessageEvent).data) as RealtimeEvent;
+
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        new Notification("New stocking request", {
+          body: `${payload.itemName} needs attention.`,
+          tag: `stocking-request-${payload.requestId}`,
+        });
+      }
+
+      setRequests((prev) => {
+        const exists = prev.some((request) => request.id === payload.requestId);
+        if (exists) return prev;
+
+        const nextRequest: Request = {
+          id: payload.requestId,
+          status: payload.status,
+          emailSent: payload.emailSent,
+          createdAt: new Date(payload.createdAt),
+          item: {
+            id: payload.itemId,
+            name: payload.itemName,
+          },
+        };
+
+        if (activeStatus && nextRequest.status !== activeStatus) {
+          return prev;
+        }
+
+        return [nextRequest, ...prev];
+      });
+    });
+
+    source.onerror = () => {
+      setLiveStatus("offline");
+    };
+
+    return () => {
+      source.close();
+    };
+  }, [activeStatus]);
 
   function handleTabChange(status: RequestStatus | null) {
     if (status) {
@@ -81,6 +141,25 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
 
   return (
     <div>
+      <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-outline-variant px-3 py-1 text-xs">
+        <span
+          className={`h-2 w-2 rounded-full ${
+            liveStatus === "live"
+              ? "bg-secondary"
+              : liveStatus === "connecting"
+                ? "bg-tertiary"
+                : "bg-error"
+          }`}
+        />
+        <span className="text-on-surface-variant">
+          {liveStatus === "live"
+            ? "Live updates on"
+            : liveStatus === "connecting"
+              ? "Connecting live updates…"
+              : "Live updates disconnected"}
+        </span>
+      </div>
+
       {/* Tabs */}
       <div className="overflow-x-auto mb-5">
       <div className="flex gap-1 bg-surface-container rounded-2xl p-1 w-fit">

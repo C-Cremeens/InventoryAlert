@@ -9,7 +9,7 @@ export default async function SettingsPage() {
   const session = await auth();
   if (!session) return null;
 
-  const [user, itemCount, stripePrices] = await Promise.all([
+  const [user, itemCount, stripePrices, pushSubscriptionCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -22,6 +22,7 @@ export default async function SettingsPage() {
     }),
     prisma.inventoryItem.count({ where: { userId: session.user.id } }),
     fetchStripePrices(),
+    prisma.pushSubscription.count({ where: { userId: session.user.id } }),
   ]);
 
   if (!user) return null;
@@ -96,6 +97,7 @@ export default async function SettingsPage() {
           currentTier={tier}
           hasCustomer={!!user.stripeCustomerId}
           stripePrices={stripePrices}
+          hasPushSubscription={pushSubscriptionCount > 0}
         />
       </section>
     </div>

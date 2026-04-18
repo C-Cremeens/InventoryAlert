@@ -1,8 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendAlertEmail } from "@/lib/resend";
+import { publishStockingRequestEvent } from "@/lib/realtime";
+import { sendStockingPushNotification } from "@/lib/push";
 
 type Params = { params: Promise<{ qrCodeId: string }> };
+
+async function notifyStockingRequestCreated(args: {
+  userId: string;
+  itemId: string;
+  itemName: string;
+  requestId: string;
+  createdAt: Date;
+  emailSent: boolean;
+}) {
+  publishStockingRequestEvent(args.userId, {
+    requestId: args.requestId,
+    itemId: args.itemId,
+    itemName: args.itemName,
+    status: "PENDING",
+    emailSent: args.emailSent,
+    createdAt: args.createdAt.toISOString(),
+  });
+
+  try {
+    await sendStockingPushNotification({
+      userId: args.userId,
+      itemName: args.itemName,
+      requestId: args.requestId,
+    });
+  } catch (err) {
+    console.error("Failed sending stocking push notification", err);
+  }
+}
 
 export async function POST(_req: NextRequest, { params }: Params) {
   const { qrCodeId } = await params;
@@ -17,9 +47,19 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   // If alert emails are disabled for this item, record the scan but skip email
   if (item.alertEmailEnabled === false) {
-    await prisma.stockingRequest.create({
+    const request = await prisma.stockingRequest.create({
       data: { itemId: item.id, emailSent: false },
     });
+
+    void notifyStockingRequestCreated({
+      userId: item.userId,
+      itemId: item.id,
+      itemName: item.name,
+      requestId: request.id,
+      createdAt: request.createdAt,
+      emailSent: request.emailSent,
+    });
+
     return NextResponse.json({ alreadyNotified: false, itemName: item.name });
   }
 
@@ -36,9 +76,19 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   if (recentEmailSent) {
     // Rate limited — create a record but don't send email
-    await prisma.stockingRequest.create({
+    const request = await prisma.stockingRequest.create({
       data: { itemId: item.id, emailSent: false },
     });
+
+    void notifyStockingRequestCreated({
+      userId: item.userId,
+      itemId: item.id,
+      itemName: item.name,
+      requestId: request.id,
+      createdAt: request.createdAt,
+      emailSent: request.emailSent,
+    });
+
     return NextResponse.json({
       alreadyNotified: true,
       itemName: item.name,
@@ -46,8 +96,17 @@ export async function POST(_req: NextRequest, { params }: Params) {
   }
 
   // Create stocking request and send email
-  await prisma.stockingRequest.create({
+  const request = await prisma.stockingRequest.create({
     data: { itemId: item.id, emailSent: true },
+  });
+
+  void notifyStockingRequestCreated({
+    userId: item.userId,
+    itemId: item.id,
+    itemName: item.name,
+    requestId: request.id,
+    createdAt: request.createdAt,
+    emailSent: request.emailSent,
   });
 
   try {
