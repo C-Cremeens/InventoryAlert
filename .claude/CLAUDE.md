@@ -86,6 +86,8 @@
 │   │   └── upload/route.ts           # POST /api/upload
 │   ├── scan/
 │   │   └── [qrCodeId]/page.tsx       # Public QR scan landing page
+│   ├── terms/page.tsx                # Public Terms of Service page
+│   ├── privacy/page.tsx              # Public Privacy Policy page
 │   ├── page.tsx                      # Public marketing / landing page
 │   └── layout.tsx                    # Root layout (fonts, metadata)
 ├── components/
@@ -239,7 +241,8 @@ await sendAlertEmail({ itemName, alertEmail });
 ## Database Schema Summary
 
 ```
-User            — id, email, hashedPassword, name, tier, stripeCustomerId, stripeSubscriptionId
+User            — id, email, hashedPassword, name, tier, stripeCustomerId, stripeSubscriptionId,
+                  termsAcceptedAt, termsVersion
 InventoryItem   — id, name, description, imageUrl, alertEmail, qrCodeId (UUID), userId, lowStockThreshold
                   + future fields: externalCartLink, externalPlatform, externalApiKeyRef
 StockingRequest — id, itemId, status (PENDING/APPROVED/DECLINED), emailSent, createdAt

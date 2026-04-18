@@ -42,6 +42,12 @@ export async function POST(req: NextRequest) {
     success_url: `${baseUrl}/settings?upgraded=1`,
     cancel_url: `${baseUrl}/settings`,
     metadata: { userId: session.user.id, tier },
+    consent_collection: { terms_of_service: "required" },
+    custom_text: {
+      terms_of_service_acceptance: {
+        message: `I agree to the InventoryAlert [Terms of Service](${baseUrl}/terms).`,
+      },
+    },
   });
 
   return NextResponse.json({ url: checkoutSession.url });

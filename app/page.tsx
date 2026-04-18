@@ -251,6 +251,12 @@ export default async function HomePage() {
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-slate-300 sm:flex-row">
           <p>InventoryAlert · Stock alerts without workflow friction.</p>
           <div className="flex gap-4">
+            <Link href="/terms" className="hover:text-white">
+              Terms
+            </Link>
+            <Link href="/privacy" className="hover:text-white">
+              Privacy
+            </Link>
             <Link href="/register" className="hover:text-white">
               Register
             </Link>
