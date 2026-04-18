@@ -26,7 +26,7 @@ function formatStripePrice(price: Stripe.Price): string {
 
 async function getDefaultPriceIdForProduct(productId: string): Promise<string | null> {
   const product = await stripe.products.retrieve(productId, { expand: ["default_price"] });
-  if (product.deleted || !product.default_price) return null;
+  if (!product || product.deleted || !product.default_price) return null;
 
   if (typeof product.default_price === "string") {
     return product.default_price;
