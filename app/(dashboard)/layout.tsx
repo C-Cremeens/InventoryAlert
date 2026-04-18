@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import MobileHeader from "@/components/layout/MobileHeader";
 import BottomNav from "@/components/layout/BottomNav";
+import InstallBanner from "@/components/InstallBanner";
 import { SessionProvider } from "next-auth/react";
 import Link from "next/link";
 
@@ -25,6 +26,7 @@ export default async function DashboardLayout({
           </main>
         </div>
         <BottomNav />
+        <InstallBanner />
         <Link
           href="/items/new"
           className="fixed bottom-28 right-6 z-40 md:hidden w-14 h-14 flex items-center justify-center bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg active:scale-95 transition-transform"
