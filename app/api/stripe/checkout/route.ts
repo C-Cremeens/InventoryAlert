@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { stripe, STRIPE_PRICES } from "@/lib/stripe";
+import { getStripePriceIds, stripe } from "@/lib/stripe";
 import { z } from "zod";
 import type { Tier } from "@prisma/client";
 
@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
   }
 
   const tier = parsed.data.tier as Exclude<Tier, "FREE">;
-  const priceId = STRIPE_PRICES[tier];
+  const priceIds = await getStripePriceIds();
+  const priceId = priceIds[tier];
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
   const user = await prisma.user.findUnique({
