@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getStripePriceIds, stripe } from "@/lib/stripe";
+import { getStripeClient, getStripePriceIds, isStripeConfigured } from "@/lib/stripe";
 import { z } from "zod";
 import type { Tier } from "@prisma/client";
 
@@ -10,6 +10,10 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  if (!isStripeConfigured()) {
+    return NextResponse.json({ error: "Stripe is not configured." }, { status: 503 });
+  }
+
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -29,6 +33,7 @@ export async function POST(req: NextRequest) {
     select: { stripeCustomerId: true, email: true },
   });
 
+  const stripe = getStripeClient();
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: user?.stripeCustomerId ?? undefined,

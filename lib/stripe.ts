@@ -1,13 +1,21 @@
 import Stripe from "stripe";
 import { TIER_LIMITS } from "@/lib/tier";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-});
+let stripeClient: Stripe | null = null;
+
+function createStripeClient(secretKey: string): Stripe {
+  return new Stripe(secretKey, {
+    apiVersion: "2026-02-25.clover",
+  });
+}
+
+function getStripeSecretKey(): string | null {
+  return process.env.STRIPE_SECRET_KEY ?? null;
+}
 
 export const STRIPE_PRICES = {
-  FAMILY: process.env.STRIPE_PRICE_FAMILY!,
-  ENTERPRISE: process.env.STRIPE_PRICE_ENTERPRISE!,
+  FAMILY: process.env.STRIPE_PRICE_FAMILY ?? "",
+  ENTERPRISE: process.env.STRIPE_PRICE_ENTERPRISE ?? "",
 } as const;
 
 export const STRIPE_PRODUCTS = {
@@ -17,6 +25,27 @@ export const STRIPE_PRODUCTS = {
 
 type PaidTier = "FAMILY" | "ENTERPRISE";
 
+export function isStripeConfigured(): boolean {
+  return Boolean(
+    getStripeSecretKey() &&
+    STRIPE_PRICES.FAMILY &&
+    STRIPE_PRICES.ENTERPRISE
+  );
+}
+
+export function getStripeClient(): Stripe {
+  const secretKey = getStripeSecretKey();
+  if (!secretKey) {
+    throw new Error("Stripe is not configured (missing STRIPE_SECRET_KEY).");
+  }
+
+  if (!stripeClient) {
+    stripeClient = createStripeClient(secretKey);
+  }
+
+  return stripeClient;
+}
+
 function formatStripePrice(price: Stripe.Price): string {
   const amount = price.unit_amount ? price.unit_amount / 100 : 0;
   const interval = price.recurring?.interval ?? "mo";
@@ -25,6 +54,7 @@ function formatStripePrice(price: Stripe.Price): string {
 }
 
 async function getDefaultPriceIdForProduct(productId: string): Promise<string | null> {
+  const stripe = getStripeClient();
   const product = await stripe.products.retrieve(productId, { expand: ["default_price"] });
   if (!product.default_price) return null;
 
@@ -62,7 +92,15 @@ export async function getStripePriceIds(): Promise<Record<PaidTier, string>> {
 }
 
 export async function fetchStripePrices(): Promise<Record<PaidTier, string>> {
+  if (!isStripeConfigured()) {
+    return {
+      FAMILY: TIER_LIMITS.FAMILY.price,
+      ENTERPRISE: TIER_LIMITS.ENTERPRISE.price,
+    };
+  }
+
   try {
+    const stripe = getStripeClient();
     const priceIds = await getStripePriceIds();
     const [family, enterprise] = await Promise.all([
       stripe.prices.retrieve(priceIds.FAMILY),
