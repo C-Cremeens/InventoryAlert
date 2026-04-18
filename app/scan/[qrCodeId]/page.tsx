@@ -2,13 +2,6 @@ import { headers } from "next/headers";
 
 type Props = { params: Promise<{ qrCodeId: string }> };
 
-const PLATFORM_LABELS: Record<string, string> = {
-  AMAZON: "Amazon",
-  WALMART: "Walmart",
-  SHOPIFY: "Shopify",
-  OTHER: "Reorder now",
-};
-
 export default async function ScanPage({ params }: Props) {
   const { qrCodeId } = await params;
 
@@ -21,8 +14,6 @@ export default async function ScanPage({ params }: Props) {
   let itemName = "";
   let alreadyNotified = false;
   let emailFailed = false;
-  let externalCartLink: string | null = null;
-  let externalPlatform: string | null = null;
   let error = false;
 
   try {
@@ -35,8 +26,6 @@ export default async function ScanPage({ params }: Props) {
       itemName = data.itemName;
       alreadyNotified = data.alreadyNotified;
       emailFailed = data.emailFailed ?? false;
-      externalCartLink = data.externalCartLink ?? null;
-      externalPlatform = data.externalPlatform ?? null;
     } else {
       error = true;
     }
@@ -60,10 +49,6 @@ export default async function ScanPage({ params }: Props) {
       </div>
     );
   }
-
-  const reorderLabel = externalPlatform
-    ? (PLATFORM_LABELS[externalPlatform] ?? "Reorder now")
-    : "Reorder now";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -97,18 +82,6 @@ export default async function ScanPage({ params }: Props) {
                 : "A low stock alert has been sent to the responsible team member. Thank you!"}
             </p>
           </>
-        )}
-        {externalCartLink && (
-          <div className="mt-6">
-            <a
-              href={externalCartLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full px-5 py-2.5 transition-colors"
-            >
-              {reorderLabel} →
-            </a>
-          </div>
         )}
       </div>
     </div>

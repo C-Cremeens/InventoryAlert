@@ -20,13 +20,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     await prisma.stockingRequest.create({
       data: { itemId: item.id, emailSent: false },
     });
-    return NextResponse.json({
-      alreadyNotified: false,
-      itemName: item.name,
-      externalCartLink: item.externalCartLink ?? null,
-      externalPlatform: item.externalPlatform ?? null,
-      emailFailed: false,
-    });
+    return NextResponse.json({ alreadyNotified: false, itemName: item.name, emailFailed: false });
   }
 
   // Check for a recent email-sent request within the last 60 minutes
@@ -45,13 +39,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     await prisma.stockingRequest.create({
       data: { itemId: item.id, emailSent: false },
     });
-    return NextResponse.json({
-      alreadyNotified: true,
-      itemName: item.name,
-      externalCartLink: item.externalCartLink ?? null,
-      externalPlatform: item.externalPlatform ?? null,
-      emailFailed: false,
-    });
+    return NextResponse.json({ alreadyNotified: true, itemName: item.name, emailFailed: false });
   }
 
   // Create stocking request and send email
@@ -67,11 +55,5 @@ export async function POST(_req: NextRequest, { params }: Params) {
     emailFailed = true;
   }
 
-  return NextResponse.json({
-    alreadyNotified: false,
-    itemName: item.name,
-    externalCartLink: item.externalCartLink ?? null,
-    externalPlatform: item.externalPlatform ?? null,
-    emailFailed,
-  });
+  return NextResponse.json({ alreadyNotified: false, itemName: item.name, emailFailed });
 }

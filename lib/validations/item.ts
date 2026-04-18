@@ -15,8 +15,6 @@ const labelLayoutSchema = z.object({
   elements: z.array(textElementSchema),
 });
 
-const externalPlatformSchema = z.enum(["AMAZON", "WALMART", "SHOPIFY", "OTHER"]);
-
 export const createItemSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional(),
@@ -24,8 +22,6 @@ export const createItemSchema = z.object({
   alertEmail: z.string().email("Must be a valid email address"),
   lowStockThreshold: z.number().int().min(1).max(9999).nullable().optional(),
   alertEmailEnabled: z.boolean().optional(),
-  externalCartLink: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  externalPlatform: externalPlatformSchema.nullable().optional(),
 });
 
 export const updateItemSchema = createItemSchema.partial().extend({

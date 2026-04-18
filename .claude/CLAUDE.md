@@ -266,6 +266,7 @@ There is no test runner, no test directory, and no Jest/Vitest configuration. Th
 | # | Area | Description | Priority |
 |---|---|---|---|
 | 1 | Testing | No tests exist — no test runner configured | High |
+| 3 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium |
 | 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
 | 10 | ENTERPRISE tier features | ENTERPRISE tier exists in the schema and pricing but has no differentiating features beyond FAMILY | Low |
 
