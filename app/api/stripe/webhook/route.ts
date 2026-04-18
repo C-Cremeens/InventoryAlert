@@ -4,6 +4,17 @@ import { prisma } from "@/lib/prisma";
 import type Stripe from "stripe";
 import type { Tier } from "@prisma/client";
 
+function logWebhook(
+  level: "info" | "warn" | "error",
+  eventType: string,
+  data: Record<string, unknown>
+) {
+  const entry = JSON.stringify({ level, eventType, ...data, ts: new Date().toISOString() });
+  if (level === "error") console.error(entry);
+  else if (level === "warn") console.warn(entry);
+  else console.log(entry);
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text(); // Must read raw body before any parsing
   const sig = req.headers.get("stripe-signature");
@@ -20,7 +31,7 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err) {
-    console.error("Webhook signature verification failed:", err);
+    logWebhook("error", "webhook.signature_failed", { error: String(err) });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -31,14 +42,19 @@ export async function POST(req: NextRequest) {
         const userId = session.metadata?.userId;
         const tier = session.metadata?.tier as Tier | undefined;
 
-        if (!userId || !tier) break;
+        if (!userId || !tier) {
+          logWebhook("warn", event.type, {
+            eventId: event.id,
+            reason: "missing metadata",
+            hasUserId: !!userId,
+            hasTier: !!tier,
+          });
+          break;
+        }
 
         const subscription = await stripe.subscriptions.retrieve(
           session.subscription as string
         );
-
-        // Use billing_cycle_anchor as the next renewal reference (Stripe API 2026+)
-        const renewalDate = new Date(subscription.billing_cycle_anchor * 1000);
 
         await prisma.user.update({
           where: { id: userId },
@@ -46,8 +62,15 @@ export async function POST(req: NextRequest) {
             tier,
             stripeCustomerId: session.customer as string,
             stripeSubscriptionId: subscription.id,
-            stripeCurrentPeriodEnd: renewalDate,
+            stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
           },
+        });
+
+        logWebhook("info", event.type, {
+          eventId: event.id,
+          userId,
+          tier,
+          subscriptionId: subscription.id,
         });
         break;
       }
@@ -57,36 +80,53 @@ export async function POST(req: NextRequest) {
         const user = await prisma.user.findFirst({
           where: { stripeSubscriptionId: subscription.id },
         });
-        if (!user) break;
 
-        // Determine tier from price
+        if (!user) {
+          logWebhook("warn", event.type, {
+            eventId: event.id,
+            subscriptionId: subscription.id,
+            reason: "no user found for subscription",
+          });
+          break;
+        }
+
         const priceId = subscription.items.data[0]?.price.id;
         let tier: Tier = "FREE";
         if (priceId === process.env.STRIPE_PRICE_FAMILY) tier = "FAMILY";
-        else if (priceId === process.env.STRIPE_PRICE_ENTERPRISE)
-          tier = "ENTERPRISE";
+        else if (priceId === process.env.STRIPE_PRICE_ENTERPRISE) tier = "ENTERPRISE";
 
         await prisma.user.update({
           where: { id: user.id },
           data: {
             tier,
-            stripeCurrentPeriodEnd: new Date(
-              subscription.billing_cycle_anchor * 1000
-            ),
+            stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
           },
+        });
+
+        logWebhook("info", event.type, {
+          eventId: event.id,
+          userId: user.id,
+          subscriptionId: subscription.id,
+          tier,
         });
         break;
       }
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        await prisma.user.updateMany({
+        const result = await prisma.user.updateMany({
           where: { stripeSubscriptionId: subscription.id },
           data: {
             tier: "FREE",
             stripeSubscriptionId: null,
             stripeCurrentPeriodEnd: null,
           },
+        });
+
+        logWebhook("info", event.type, {
+          eventId: event.id,
+          subscriptionId: subscription.id,
+          usersUpdated: result.count,
         });
         break;
       }
@@ -95,7 +135,12 @@ export async function POST(req: NextRequest) {
         break;
     }
   } catch (err) {
-    console.error("Webhook handler error:", err);
+    logWebhook("error", "webhook.handler_error", {
+      eventId: event.id,
+      eventType: event.type,
+      error: String(err),
+    });
+    // Return 500 so Stripe auto-retries the event
     return NextResponse.json({ error: "Handler error" }, { status: 500 });
   }
 
