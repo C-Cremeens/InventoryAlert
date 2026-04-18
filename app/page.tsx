@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { TIER_LIMITS } from "@/lib/tier";
+import { fetchStripePrices } from "@/lib/stripe";
 import type { Tier } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -78,8 +79,14 @@ const FAQS = [
 ];
 
 export default async function HomePage() {
-  const session = await auth();
+  const [session, stripePrices] = await Promise.all([auth(), fetchStripePrices()]);
   if (session) redirect("/dashboard");
+
+  const liveTierLimits = {
+    ...TIER_LIMITS,
+    FAMILY: { ...TIER_LIMITS.FAMILY, price: stripePrices.FAMILY },
+    ENTERPRISE: { ...TIER_LIMITS.ENTERPRISE, price: stripePrices.ENTERPRISE },
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -201,7 +208,7 @@ export default async function HomePage() {
             </p>
             <div className="mt-10 grid gap-6 md:grid-cols-3">
               {PRICING_TIERS.map((tierDisplay) => {
-                const tier = TIER_LIMITS[tierDisplay.key];
+                const tier = liveTierLimits[tierDisplay.key];
                 const [price, period] = tier.price.split("/");
                 const itemsText =
                   tier.maxItems === Infinity

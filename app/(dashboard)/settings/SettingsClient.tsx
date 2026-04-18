@@ -6,9 +6,10 @@ import type { Tier } from "@prisma/client";
 interface Props {
   currentTier: Tier;
   hasCustomer: boolean;
+  stripePrices: { FAMILY: string; ENTERPRISE: string };
 }
 
-export default function SettingsClient({ currentTier, hasCustomer }: Props) {
+export default function SettingsClient({ currentTier, hasCustomer, stripePrices }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -57,14 +58,14 @@ export default function SettingsClient({ currentTier, hasCustomer }: Props) {
               disabled={!!loading}
               className="flex-1 bg-primary text-on-primary rounded-full border-0 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {loading === "FAMILY" ? "Loading…" : "Family — $9/mo"}
+              {loading === "FAMILY" ? "Loading…" : `Family — ${stripePrices.FAMILY}`}
             </button>
             <button
               onClick={() => handleUpgrade("ENTERPRISE")}
               disabled={!!loading}
               className="flex-1 bg-primary-container text-on-primary-container rounded-full border border-primary/20 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {loading === "ENTERPRISE" ? "Loading…" : "Enterprise — $29/mo"}
+              {loading === "ENTERPRISE" ? "Loading…" : `Enterprise — ${stripePrices.ENTERPRISE}`}
             </button>
           </div>
         </div>
@@ -77,7 +78,7 @@ export default function SettingsClient({ currentTier, hasCustomer }: Props) {
             disabled={!!loading}
             className="flex-1 bg-primary-container text-on-primary-container rounded-full border border-primary/20 px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
-            {loading === "ENTERPRISE" ? "Loading…" : "Upgrade to Enterprise — $29/mo"}
+            {loading === "ENTERPRISE" ? "Loading…" : `Upgrade to Enterprise — ${stripePrices.ENTERPRISE}`}
           </button>
           {hasCustomer && (
             <button
