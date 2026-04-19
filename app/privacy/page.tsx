@@ -31,10 +31,9 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-white mb-3">1. Who We Are</h2>
             <p>
-              InventoryAlert operates the inventory alert platform available at this domain.
-              This Privacy Policy explains what personal data we collect, how we use it, and your rights
-              regarding that data.{" "}
-              <span className="text-slate-500 italic">[Insert legal entity name and address before going live.]</span>
+              InventoryAlert is operated by Petra 413 LLC. This Privacy Policy explains what personal
+              data we collect, how we use it, and your rights regarding that data.{" "}
+              <span className="text-slate-500 italic">[Insert registered address before going live.]</span>
             </p>
           </section>
 

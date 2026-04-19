@@ -133,7 +133,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-white mb-3">9. Limitation of Liability</h2>
             <p>
-              To the fullest extent permitted by law, InventoryAlert and its operators shall not be liable
+              To the fullest extent permitted by law, Petra 413 LLC and its officers shall not be liable
               for any indirect, incidental, special, or consequential damages arising from your use of the
               Service, including but not limited to:
             </p>
@@ -196,7 +196,7 @@ export default function TermsPage() {
             <h2 className="text-lg font-semibold text-white mb-3">14. Governing Law</h2>
             <p>
               These Terms are governed by and construed in accordance with applicable law. Any disputes
-              shall be resolved in the courts of the jurisdiction where InventoryAlert operates.{" "}
+              shall be resolved in the courts of the jurisdiction where Petra 413 LLC operates.{" "}
               <span className="text-slate-500 italic">[Jurisdiction to be specified before going live.]</span>
             </p>
           </section>
