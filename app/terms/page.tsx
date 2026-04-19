@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = "April 18, 2026";
-const CONTACT_EMAIL = process.env.LEGAL_CONTACT_EMAIL ?? "chris.cremeens@petra413.com";
+const CONTACT_EMAIL = process.env.LEGAL_CONTACT_EMAIL ?? "help@petra413.com";
 const COMPANY_ADDRESS = process.env.LEGAL_COMPANY_ADDRESS ?? "1586 Spruce Dr., Arkdale WI 54613";
 
 export default function TermsPage() {
