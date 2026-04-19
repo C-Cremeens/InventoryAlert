@@ -207,6 +207,21 @@ export default async function HomePage() {
                   tier.maxItems === Infinity
                     ? "Unlimited inventory items"
                     : `Up to ${tier.maxItems} inventory items`;
+                const features =
+                  tierDisplay.key === "FREE"
+                    ? [
+                        itemsText,
+                        "QR label generation",
+                        "Instant email alerts",
+                        "Request tracking dashboard",
+                      ]
+                    : [
+                        "Everything in Free",
+                        itemsText,
+                        "Per-item scan timeout controls",
+                        "Custom QR acknowledgement copy",
+                        "Drag-and-drop label editor with custom layout controls",
+                      ];
 
                 return (
                   <PricingCard
@@ -218,13 +233,7 @@ export default async function HomePage() {
                     cta={tierDisplay.cta}
                     highlight={tierDisplay.highlight}
                     badge={tierDisplay.badge}
-                    features={[
-                      itemsText,
-                      "QR label generation",
-                      "Instant email alerts",
-                      "Request tracking dashboard",
-                      tier.customLabels ? "Custom labels" : "Custom labels (Pro only)",
-                    ]}
+                    features={features}
                   />
                 );
               })}

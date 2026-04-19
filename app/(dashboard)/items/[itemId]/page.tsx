@@ -51,7 +51,7 @@ export default async function EditItemPage({
         canCustomizeLabels={canCustomizeLabels}
       />
 
-      <ItemForm item={item} mode="edit" />
+      <ItemForm item={item} mode="edit" currentTier={session.user.tier} />
     </div>
   );
 }

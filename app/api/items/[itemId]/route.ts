@@ -42,11 +42,32 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const { labelLayout, ...rest } = parsed.data;
+  const scanAcknowledgement = rest.scanAcknowledgement?.trim();
+
+  if (session.user.tier !== "PRO") {
+    const hasCustomCooldown =
+      rest.scanCooldownMinutes !== undefined && rest.scanCooldownMinutes !== 60;
+    const hasCustomAcknowledgement = !!scanAcknowledgement;
+
+    if (hasCustomCooldown || hasCustomAcknowledgement) {
+      return NextResponse.json(
+        {
+          error: "Custom scan timeout and acknowledgement are Pro features.",
+          code: "PRO_FEATURE_REQUIRED",
+        },
+        { status: 403 }
+      );
+    }
+  }
+
   const updated = await prisma.inventoryItem.update({
     where: { id: itemId },
     data: {
       ...rest,
       imageUrl: rest.imageUrl !== undefined ? rest.imageUrl || null : undefined,
+      ...(rest.scanAcknowledgement !== undefined && {
+        scanAcknowledgement: scanAcknowledgement || null,
+      }),
       // Prisma requires Prisma.JsonNull instead of plain null for nullable JSON fields
       ...(labelLayout !== undefined && {
         labelLayout: labelLayout === null ? Prisma.JsonNull : labelLayout,

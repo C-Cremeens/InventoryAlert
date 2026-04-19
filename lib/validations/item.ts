@@ -22,6 +22,8 @@ export const createItemSchema = z.object({
   alertEmail: z.string().email("Must be a valid email address"),
   lowStockThreshold: z.number().int().min(1).max(9999).nullable().optional(),
   alertEmailEnabled: z.boolean().optional(),
+  scanCooldownMinutes: z.number().int().min(1).max(1440).optional(),
+  scanAcknowledgement: z.string().max(280).optional(),
 });
 
 export const updateItemSchema = createItemSchema.partial().extend({

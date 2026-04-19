@@ -68,6 +68,8 @@ model InventoryItem {
   imageUrl          String?
   alertEmail        String
   alertEmailEnabled Boolean           @default(true)
+  scanCooldownMinutes Int             @default(60)
+  scanAcknowledgement String?
   qrCodeId          String            @unique @default(uuid())
   userId            String
 

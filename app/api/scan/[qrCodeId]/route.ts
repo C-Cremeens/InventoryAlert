@@ -45,6 +45,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Item not found" }, { status: 404 });
   }
 
+  const scanAcknowledgement = item.scanAcknowledgement?.trim();
+  const defaultAcknowledgements = {
+    sent: "A low stock alert has been sent to the responsible team member. Thank you!",
+    alreadyNotified:
+      "Staff have already been notified about this item recently. No additional alert was sent.",
+  };
+
   // If alert emails are disabled for this item, record the scan but skip email
   if (item.alertEmailEnabled === false) {
     const request = await prisma.stockingRequest.create({
@@ -60,16 +67,21 @@ export async function POST(_req: NextRequest, { params }: Params) {
       emailSent: request.emailSent,
     });
 
-    return NextResponse.json({ alreadyNotified: false, itemName: item.name });
+    return NextResponse.json({
+      alreadyNotified: false,
+      itemName: item.name,
+      acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
+    });
   }
 
-  // Check for a recent email-sent request within the last 60 minutes
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  // Check for a recent email-sent request within this item's configured cooldown window
+  const cooldownMinutes = item.scanCooldownMinutes ?? 60;
+  const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
   const recentEmailSent = await prisma.stockingRequest.findFirst({
     where: {
       itemId: item.id,
       emailSent: true,
-      createdAt: { gte: oneHourAgo },
+      createdAt: { gte: cooldownCutoff },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -92,6 +104,8 @@ export async function POST(_req: NextRequest, { params }: Params) {
     return NextResponse.json({
       alreadyNotified: true,
       itemName: item.name,
+      acknowledgementMessage:
+        scanAcknowledgement || defaultAcknowledgements.alreadyNotified,
     });
   }
 
@@ -116,5 +130,9 @@ export async function POST(_req: NextRequest, { params }: Params) {
     // Don't fail the request if email fails — the stocking request was still created
   }
 
-  return NextResponse.json({ alreadyNotified: false, itemName: item.name });
+  return NextResponse.json({
+    alreadyNotified: false,
+    itemName: item.name,
+    acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
+  });
 }

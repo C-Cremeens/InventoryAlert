@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { InventoryItem } from "@prisma/client";
+import type { InventoryItem, Tier } from "@prisma/client";
 
 interface Props {
   item?: InventoryItem;
   mode: "create" | "edit";
+  currentTier: Tier;
 }
 
-export default function ItemForm({ item, mode }: Props) {
+export default function ItemForm({ item, mode, currentTier }: Props) {
   const router = useRouter();
+  const isPro = currentTier === "PRO";
   const [name, setName] = useState(item?.name ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
   const [alertEmail, setAlertEmail] = useState(item?.alertEmail ?? "");
@@ -20,6 +22,12 @@ export default function ItemForm({ item, mode }: Props) {
   );
   const [alertEmailEnabled, setAlertEmailEnabled] = useState(
     item?.alertEmailEnabled ?? true
+  );
+  const [scanCooldownMinutes, setScanCooldownMinutes] = useState(
+    item?.scanCooldownMinutes != null ? String(item.scanCooldownMinutes) : "60"
+  );
+  const [scanAcknowledgement, setScanAcknowledgement] = useState(
+    item?.scanAcknowledgement ?? ""
   );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -56,6 +64,7 @@ export default function ItemForm({ item, mode }: Props) {
     setLoading(true);
     try {
       const threshold = lowStockThreshold ? parseInt(lowStockThreshold, 10) : null;
+      const cooldown = scanCooldownMinutes ? parseInt(scanCooldownMinutes, 10) : 60;
       const payload = {
         name,
         description: description || undefined,
@@ -63,6 +72,8 @@ export default function ItemForm({ item, mode }: Props) {
         imageUrl: imageUrl || undefined,
         lowStockThreshold: threshold && !isNaN(threshold) ? threshold : null,
         alertEmailEnabled,
+        scanCooldownMinutes: !isNaN(cooldown) ? cooldown : 60,
+        scanAcknowledgement: scanAcknowledgement.trim() || undefined,
       };
 
       const res = await fetch(
@@ -175,6 +186,53 @@ export default function ItemForm({ item, mode }: Props) {
             }`}
           />
         </button>
+      </div>
+      <div className="space-y-4 rounded-xl border border-outline-variant p-4 bg-surface-container-low">
+        <div>
+          <p className="text-sm font-medium text-on-surface">Pro scan controls</p>
+          <p className="text-xs text-outline mt-0.5">
+            Configure per-item scan timeout and acknowledgement message.
+          </p>
+          {!isPro && (
+            <p className="text-xs text-secondary mt-1">
+              Upgrade to Pro to customize these settings.
+            </p>
+          )}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-on-surface-variant mb-1">
+            Scan timeout (minutes)
+          </label>
+          <input
+            type="number"
+            value={scanCooldownMinutes}
+            onChange={(e) => setScanCooldownMinutes(e.target.value)}
+            min={1}
+            max={1440}
+            disabled={!isPro}
+            className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface disabled:opacity-60"
+          />
+          <p className="text-xs text-outline mt-1">
+            How long to wait before another email alert can be sent for this item.
+          </p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-on-surface-variant mb-1">
+            QR acknowledgement message
+          </label>
+          <textarea
+            value={scanAcknowledgement}
+            onChange={(e) => setScanAcknowledgement(e.target.value)}
+            rows={3}
+            maxLength={280}
+            disabled={!isPro}
+            placeholder="Thanks! We received your scan and notified the team."
+            className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface resize-none disabled:opacity-60"
+          />
+          <p className="text-xs text-outline mt-1">
+            Optional. This replaces the default message shown after scanning.
+          </p>
+        </div>
       </div>
       <div>
         <label className="block text-sm font-medium text-on-surface-variant mb-1">
