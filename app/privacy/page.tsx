@@ -6,6 +6,8 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = "April 18, 2026";
+const CONTACT_EMAIL = process.env.LEGAL_CONTACT_EMAIL ?? "chris.cremeens@petra413.com";
+const COMPANY_ADDRESS = process.env.LEGAL_COMPANY_ADDRESS ?? "1586 Spruce Dr., Arkdale WI 54613";
 
 export default function PrivacyPage() {
   return (
@@ -31,9 +33,8 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-white mb-3">1. Who We Are</h2>
             <p>
-              InventoryAlert is operated by Petra 413 LLC. This Privacy Policy explains what personal
-              data we collect, how we use it, and your rights regarding that data.{" "}
-              <span className="text-slate-500 italic">[Insert registered address before going live.]</span>
+              InventoryAlert is operated by Petra 413 LLC ({COMPANY_ADDRESS}). This Privacy Policy
+              explains what personal data we collect, how we use it, and your rights regarding that data.
             </p>
           </section>
 
@@ -183,8 +184,8 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-white mb-3">11. Contact</h2>
             <p>
-              For privacy-related questions or data requests:{" "}
-              <span className="text-slate-500 italic">[Insert contact email before going live.]</span>
+              For privacy-related questions or data requests, email{" "}
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-cyan-300 hover:underline">{CONTACT_EMAIL}</a>.
             </p>
           </section>
 

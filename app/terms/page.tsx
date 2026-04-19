@@ -6,6 +6,8 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = "April 18, 2026";
+const CONTACT_EMAIL = process.env.LEGAL_CONTACT_EMAIL ?? "chris.cremeens@petra413.com";
+const COMPANY_ADDRESS = process.env.LEGAL_COMPANY_ADDRESS ?? "1586 Spruce Dr., Arkdale WI 54613";
 
 export default function TermsPage() {
   return (
@@ -196,16 +198,16 @@ export default function TermsPage() {
             <h2 className="text-lg font-semibold text-white mb-3">14. Governing Law</h2>
             <p>
               These Terms are governed by and construed in accordance with applicable law. Any disputes
-              shall be resolved in the courts of the jurisdiction where Petra 413 LLC operates.{" "}
-              <span className="text-slate-500 italic">[Jurisdiction to be specified before going live.]</span>
+              shall be resolved in the courts of the State of Wisconsin, USA.
             </p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-white mb-3">15. Contact</h2>
             <p>
-              Questions about these Terms?{" "}
-              <span className="text-slate-500 italic">[Insert contact email before going live.]</span>
+              Questions about these Terms? Email us at{" "}
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-cyan-300 hover:underline">{CONTACT_EMAIL}</a>.
+              Petra 413 LLC · {COMPANY_ADDRESS}
             </p>
           </section>
 
