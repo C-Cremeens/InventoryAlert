@@ -3,10 +3,13 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+const TERMS_VERSION = "2026-04-18";
+
 const schema = z.object({
   name: z.string().max(100).optional(),
   email: z.string().email(),
   password: z.string().min(8),
+  termsAccepted: z.literal(true, { message: "You must accept the Terms of Service to register." }),
 });
 
 export async function POST(req: NextRequest) {
@@ -32,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     await prisma.user.create({
-      data: { email, hashedPassword, name },
+      data: { email, hashedPassword, name, termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION },
     });
 
     return NextResponse.json({ ok: true }, { status: 201 });
