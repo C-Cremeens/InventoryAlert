@@ -44,10 +44,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const scanAcknowledgement = parsed.data.scanAcknowledgement?.trim();
+    const scanCooldownMinutes = parsed.data.scanCooldownMinutes ?? 60;
+    const requestingProScanControls =
+      scanCooldownMinutes !== 60 || !!scanAcknowledgement;
+
+    if (requestingProScanControls && session.user.tier !== "PRO") {
+      return NextResponse.json(
+        {
+          error: "Custom scan timeout and acknowledgement are Pro features.",
+          code: "PRO_FEATURE_REQUIRED",
+        },
+        { status: 403 }
+      );
+    }
+
     const item = await prisma.inventoryItem.create({
       data: {
         ...parsed.data,
         imageUrl: parsed.data.imageUrl || null,
+        scanCooldownMinutes: session.user.tier === "PRO" ? scanCooldownMinutes : 60,
+        scanAcknowledgement: session.user.tier === "PRO" ? scanAcknowledgement || null : null,
         userId: session.user.id,
       },
     });

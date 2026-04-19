@@ -223,6 +223,12 @@ export default async function HomePage() {
                       "QR label generation",
                       "Instant email alerts",
                       "Request tracking dashboard",
+                      tier.scanControls
+                        ? "Per-item scan timeout controls"
+                        : "Per-item scan timeout controls (Pro only)",
+                      tier.scanControls
+                        ? "Custom QR acknowledgement copy"
+                        : "Custom QR acknowledgement copy (Pro only)",
                       tier.customLabels ? "Custom labels" : "Custom labels (Pro only)",
                     ]}
                   />

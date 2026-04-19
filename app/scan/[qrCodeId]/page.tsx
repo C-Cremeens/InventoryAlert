@@ -13,6 +13,7 @@ export default async function ScanPage({ params }: Props) {
 
   let itemName = "";
   let alreadyNotified = false;
+  let acknowledgementMessage = "";
   let error = false;
 
   try {
@@ -24,6 +25,7 @@ export default async function ScanPage({ params }: Props) {
       const data = await res.json();
       itemName = data.itemName;
       alreadyNotified = data.alreadyNotified;
+      acknowledgementMessage = data.acknowledgementMessage;
     } else {
       error = true;
     }
@@ -61,8 +63,7 @@ export default async function ScanPage({ params }: Props) {
               <strong>{itemName}</strong>
             </p>
             <p className="text-sm text-gray-500">
-              Staff have already been notified about this item recently. No
-              additional alert was sent.
+              {acknowledgementMessage}
             </p>
           </>
         ) : (
@@ -75,8 +76,7 @@ export default async function ScanPage({ params }: Props) {
               <strong>{itemName}</strong>
             </p>
             <p className="text-sm text-gray-500">
-              A low stock alert has been sent to the responsible team member.
-              Thank you!
+              {acknowledgementMessage}
             </p>
           </>
         )}

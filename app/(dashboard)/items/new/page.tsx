@@ -39,7 +39,7 @@ export default async function NewItemPage() {
   return (
     <div className="max-w-lg">
       <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">New Item</h1>
-      <ItemForm mode="create" />
+      <ItemForm mode="create" currentTier={session.user.tier} />
     </div>
   );
 }
