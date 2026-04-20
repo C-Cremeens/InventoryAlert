@@ -1,44 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { z } from "zod";
+import { AuthProvider } from "@prisma/client";
+import { normalizeEmail, registerSchema } from "@/lib/auth-validation";
+import { ensureCredentialsIdentity } from "@/lib/auth-identities";
 
 const TERMS_VERSION = "2026-04-18";
-
-const schema = z.object({
-  name: z.string().max(100).optional(),
-  email: z.string().email(),
-  password: z.string().min(8),
-  termsAccepted: z.literal(true, { message: "You must accept the Terms of Service to register." }),
-});
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const parsed = schema.safeParse(body);
+    const parsed = registerSchema.safeParse(body);
     if (!parsed.success) {
+      const fieldErrors = parsed.error.flatten().fieldErrors;
       return NextResponse.json(
-        { error: parsed.error.issues[0].message },
+        {
+          error: parsed.error.issues[0].message,
+          fieldErrors,
+        },
         { status: 400 }
       );
     }
 
     const { name, email, password } = parsed.data;
+    const normalizedEmail = normalizeEmail(email);
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: "insensitive",
+        },
+      },
+      include: {
+        authIdentities: {
+          select: { provider: true },
+        },
+      },
+    });
     if (existing) {
+      const usesGoogleOnly =
+        !existing.hashedPassword &&
+        existing.authIdentities.some(
+          (identity) => identity.provider === AuthProvider.GOOGLE
+        );
+
       return NextResponse.json(
-        { error: "An account with this email already exists." },
+        {
+          error: usesGoogleOnly
+            ? "An account with this email already uses Google sign-in. Continue with Google or use Forgot password to create a password."
+            : "An account with this email already exists. Sign in instead.",
+        },
         { status: 409 }
       );
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    await prisma.user.create({
-      data: { email, hashedPassword, name, termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION },
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        hashedPassword,
+        name,
+        termsAcceptedAt: new Date(),
+        termsVersion: TERMS_VERSION,
+      },
     });
+    await ensureCredentialsIdentity(user.id);
 
-    return NextResponse.json({ ok: true }, { status: 201 });
+    return NextResponse.json({ ok: true, email: normalizedEmail }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
