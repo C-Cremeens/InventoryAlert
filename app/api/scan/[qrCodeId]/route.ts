@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendAlertEmail } from "@/lib/resend";
 import { publishStockingRequestEvent } from "@/lib/realtime";
 import { sendStockingPushNotification } from "@/lib/push";
+import { getEffectiveRecipientEmails } from "@/lib/alert-recipients";
 
 type Params = { params: Promise<{ qrCodeId: string }> };
 
@@ -39,6 +40,22 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const item = await prisma.inventoryItem.findUnique({
     where: { qrCodeId },
+    include: {
+      alertRecipients: {
+        orderBy: { position: "asc" },
+        select: {
+          kind: true,
+          inlineEmail: true,
+          contact: {
+            select: {
+              id: true,
+              email: true,
+              emailEnabled: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!item) {
@@ -74,6 +91,34 @@ export async function POST(_req: NextRequest, { params }: Params) {
     });
   }
 
+  const effectiveRecipientEmails = getEffectiveRecipientEmails(item.alertRecipients);
+
+  if (effectiveRecipientEmails.length === 0) {
+    const request = await prisma.stockingRequest.create({
+      data: { itemId: item.id, emailSent: false },
+    });
+
+    void notifyStockingRequestCreated({
+      userId: item.userId,
+      itemId: item.id,
+      itemName: item.name,
+      requestId: request.id,
+      createdAt: request.createdAt,
+      emailSent: request.emailSent,
+    });
+
+    console.error(
+      `[POST /api/scan/${qrCodeId}] Item "${item.id}" has no effective alert recipients configured.`
+    );
+
+    return NextResponse.json({
+      alreadyNotified: false,
+      itemName: item.name,
+      acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
+    });
+  }
+
+  // Check for a recent email-sent request within this item's configured cooldown window
   const cooldownMinutes = item.scanCooldownMinutes ?? 60;
   const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
   const recentEmailSent = await prisma.stockingRequest.findFirst({
@@ -123,7 +168,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   let emailFailed = false;
   try {
-    await sendAlertEmail(item.alertEmail, item.name);
+    await sendAlertEmail(effectiveRecipientEmails, item.name);
   } catch (err) {
     console.error("Failed to send alert email:", err);
     emailFailed = true;

@@ -30,12 +30,52 @@ export default async function EditItemPage({
   if (!session) return null;
 
   const { itemId } = await params;
-  const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
+  const [item, contacts] = await Promise.all([
+    prisma.inventoryItem.findUnique({
+      where: { id: itemId },
+      include: {
+        alertRecipients: {
+          orderBy: { position: "asc" },
+          select: {
+            id: true,
+            kind: true,
+            contactId: true,
+            inlineEmail: true,
+            contact: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                cellPhone: true,
+                emailEnabled: true,
+                smsOptIn: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.alertContact.findMany({
+      where: { userId: session.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        cellPhone: true,
+        emailEnabled: true,
+        smsOptIn: true,
+      },
+      orderBy: [{ name: "asc" }, { email: "asc" }],
+    }),
+  ]);
 
   if (!item || item.userId !== session.user.id) notFound();
 
   const canCustomizeLabels = TIER_LIMITS[session.user.tier].customLabels;
   const savedLayout = parseLabelLayout(item.labelLayout);
+  const hasLockedProRecipients =
+    session.user.tier !== "PRO" &&
+    (item.alertRecipients.length !== 1 || item.alertRecipients[0]?.kind !== "INLINE_EMAIL");
 
   return (
     <div className="max-w-lg">
@@ -51,7 +91,38 @@ export default async function EditItemPage({
         canCustomizeLabels={canCustomizeLabels}
       />
 
-      <ItemForm item={item} mode="edit" currentTier={session.user.tier} />
+      <ItemForm
+        item={{
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          alertEmail: item.alertEmail,
+          imageUrl: item.imageUrl,
+          lowStockThreshold: item.lowStockThreshold,
+          alertEmailEnabled: item.alertEmailEnabled,
+          scanCooldownMinutes: item.scanCooldownMinutes,
+          scanAcknowledgement: item.scanAcknowledgement,
+          alertRecipients: item.alertRecipients.map((recipient) => {
+            if (recipient.kind === "CONTACT" && recipient.contactId) {
+              return {
+                clientId: recipient.id,
+                kind: "CONTACT" as const,
+                contactId: recipient.contactId,
+              };
+            }
+
+            return {
+              clientId: recipient.id,
+              kind: "INLINE_EMAIL" as const,
+              email: recipient.inlineEmail ?? "",
+            };
+          }),
+        }}
+        mode="edit"
+        currentTier={session.user.tier}
+        contacts={contacts}
+        hasLockedProRecipients={hasLockedProRecipients}
+      />
     </div>
   );
 }

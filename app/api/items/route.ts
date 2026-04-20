@@ -3,6 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createItemSchema } from "@/lib/validations/item";
 import { canCreateItem } from "@/lib/tier";
+import {
+  RecipientConfigError,
+  resolveRecipientWritePayload,
+} from "@/lib/alert-recipients";
 
 export async function GET() {
   const session = await auth();
@@ -59,18 +63,54 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const item = await prisma.inventoryItem.create({
-      data: {
-        ...parsed.data,
-        imageUrl: parsed.data.imageUrl || null,
-        scanCooldownMinutes: session.user.tier === "PRO" ? scanCooldownMinutes : 60,
-        scanAcknowledgement: session.user.tier === "PRO" ? scanAcknowledgement || null : null,
+    const item = await prisma.$transaction(async (tx) => {
+      const resolvedRecipients = await resolveRecipientWritePayload({
+        tx,
         userId: session.user.id,
-      },
+        tier: session.user.tier,
+        alertEmail: parsed.data.alertEmail,
+        alertRecipients: parsed.data.alertRecipients,
+      });
+
+      const alertsEnabled = parsed.data.alertEmailEnabled ?? true;
+      if (alertsEnabled && resolvedRecipients.effectiveRecipientCount === 0) {
+        throw new RecipientConfigError(
+          "At least one email-enabled recipient is required while alerts are enabled."
+        );
+      }
+
+      const createdItem = await tx.inventoryItem.create({
+        data: {
+          name: parsed.data.name,
+          description: parsed.data.description,
+          imageUrl: parsed.data.imageUrl || null,
+          alertEmail: resolvedRecipients.primaryAlertEmail,
+          lowStockThreshold: parsed.data.lowStockThreshold,
+          alertEmailEnabled: parsed.data.alertEmailEnabled,
+          scanCooldownMinutes: session.user.tier === "PRO" ? scanCooldownMinutes : 60,
+          scanAcknowledgement: session.user.tier === "PRO" ? scanAcknowledgement || null : null,
+          userId: session.user.id,
+        },
+      });
+
+      await tx.inventoryItemRecipient.createMany({
+        data: resolvedRecipients.recipients.map((recipient) => ({
+          ...recipient,
+          itemId: createdItem.id,
+        })),
+      });
+
+      return createdItem;
     });
 
     return NextResponse.json(item, { status: 201 });
   } catch (err) {
+    if (err instanceof RecipientConfigError) {
+      return NextResponse.json(
+        { error: err.message, ...(err.code ? { code: err.code } : {}) },
+        { status: err.status }
+      );
+    }
     console.error("[POST /api/items]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

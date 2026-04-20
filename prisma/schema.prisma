@@ -24,6 +24,11 @@ enum ExternalPlatform {
   OTHER
 }
 
+enum RecipientKind {
+  CONTACT
+  INLINE_EMAIL
+}
+
 model User {
   id                     String          @id @default(cuid())
   email                  String          @unique
@@ -41,6 +46,7 @@ model User {
   updatedAt              DateTime        @updatedAt
 
   items                  InventoryItem[]
+  contacts               AlertContact[]
   pushSubscriptions      PushSubscription[]
 }
 
@@ -85,10 +91,50 @@ model InventoryItem {
   updatedAt         DateTime          @updatedAt
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alertRecipients   InventoryItemRecipient[]
   stockingRequests  StockingRequest[]
 
   @@index([userId])
   @@index([qrCodeId])
+}
+
+model AlertContact {
+  id              String                   @id @default(cuid())
+  userId          String
+  name            String
+  email           String
+  emailNormalized String
+  cellPhone       String?
+  emailEnabled    Boolean                  @default(true)
+  smsOptIn        Boolean                  @default(false)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemRecipients  InventoryItemRecipient[]
+
+  @@unique([userId, emailNormalized])
+  @@index([userId])
+}
+
+model InventoryItemRecipient {
+  id                    String         @id @default(cuid())
+  itemId                String
+  kind                  RecipientKind
+  contactId             String?
+  inlineEmail           String?
+  inlineEmailNormalized String?
+  position              Int            @default(0)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  item                  InventoryItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  contact               AlertContact?  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, contactId])
+  @@unique([itemId, inlineEmailNormalized])
+  @@index([itemId])
+  @@index([contactId])
 }
 
 model StockingRequest {

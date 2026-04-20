@@ -8,9 +8,25 @@ export default async function NewItemPage() {
   const session = await auth();
   if (!session) return null;
 
-  const count = await prisma.inventoryItem.count({
-    where: { userId: session.user.id },
-  });
+  const [count, contacts] = await Promise.all([
+    prisma.inventoryItem.count({
+      where: { userId: session.user.id },
+    }),
+    session.user.tier === "PRO"
+      ? prisma.alertContact.findMany({
+          where: { userId: session.user.id },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            cellPhone: true,
+            emailEnabled: true,
+            smsOptIn: true,
+          },
+          orderBy: [{ name: "asc" }, { email: "asc" }],
+        })
+      : Promise.resolve([]),
+  ]);
 
   const allowed = canCreateItem(session.user.tier, count);
 
@@ -39,7 +55,11 @@ export default async function NewItemPage() {
   return (
     <div className="max-w-lg">
       <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">New Item</h1>
-      <ItemForm mode="create" currentTier={session.user.tier} />
+      <ItemForm
+        mode="create"
+        currentTier={session.user.tier}
+        contacts={contacts}
+      />
     </div>
   );
 }

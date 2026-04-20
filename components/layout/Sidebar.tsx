@@ -3,16 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import type { Tier } from "@prisma/client";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/items", label: "Inventory", icon: "inventory_2" },
+  { href: "/contacts", label: "Contacts", icon: "groups" },
   { href: "/requests", label: "Stocking Requests", icon: "notifications" },
   { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ currentTier }: { currentTier: Tier }) {
   const pathname = usePathname();
+  const visibleNavItems =
+    currentTier === "PRO"
+      ? navItems
+      : navItems.filter((item) => item.href !== "/contacts");
 
   return (
     <aside className="hidden md:flex w-60 bg-surface-container-lowest border-r border-outline-variant flex-col min-h-screen">
@@ -20,7 +26,7 @@ export default function Sidebar() {
         <span className="font-headline font-bold text-primary text-lg">InventoryAlert</span>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const active =
             pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href));

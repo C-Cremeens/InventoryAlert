@@ -2,16 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Tier } from "@prisma/client";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/items", label: "Inventory", icon: "inventory_2" },
+  { href: "/contacts", label: "Contacts", icon: "groups" },
   { href: "/requests", label: "Requests", icon: "notifications" },
   { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
-export default function BottomNav() {
+export default function BottomNav({ currentTier }: { currentTier: Tier }) {
   const pathname = usePathname();
+  const visibleNavItems =
+    currentTier === "PRO"
+      ? navItems
+      : navItems.filter((item) => item.href !== "/contacts");
 
   return (
     <nav
@@ -19,7 +25,7 @@ export default function BottomNav() {
       className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white/60 backdrop-blur-xl rounded-t-3xl pb-[env(safe-area-inset-bottom)]"
     >
       <div className="flex">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const active =
             pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href));
