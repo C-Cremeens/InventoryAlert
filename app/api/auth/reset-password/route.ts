@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const schema = z.object({
-  token: z.string().min(1),
-  password: z.string().min(8),
-});
+import { ensureCredentialsIdentity } from "@/lib/auth-identities";
+import { resetPasswordSchema } from "@/lib/auth-validation";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const parsed = schema.safeParse(body);
+    const parsed = resetPasswordSchema.safeParse(body);
     if (!parsed.success) {
+      const fieldErrors = parsed.error.flatten().fieldErrors;
       return NextResponse.json(
-        { error: parsed.error.issues[0].message },
+        {
+          error: parsed.error.issues[0].message,
+          fieldErrors,
+        },
         { status: 400 }
       );
     }
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         passwordResetExpiry: null,
       },
     });
+    await ensureCredentialsIdentity(user.id);
 
     return NextResponse.json({ ok: true });
   } catch {

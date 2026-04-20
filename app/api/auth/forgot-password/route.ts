@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/resend";
+import { normalizeEmail } from "@/lib/auth-validation";
 
 const schema = z.object({
   email: z.string().email(),
@@ -19,8 +20,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { email } = parsed.data;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = normalizeEmail(parsed.data.email);
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: "insensitive",
+        },
+      },
+    });
 
     if (user) {
       const rawToken = crypto.randomBytes(32).toString("hex");
@@ -34,10 +42,10 @@ export async function POST(req: NextRequest) {
 
       const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${rawToken}`;
       try {
-        await sendPasswordResetEmail(email, resetUrl);
+        await sendPasswordResetEmail(user.email, resetUrl);
       } catch {
         // Log but don't expose email delivery failures
-        console.error("Failed to send password reset email to", email);
+        console.error("Failed to send password reset email to", user.email);
       }
     }
 
