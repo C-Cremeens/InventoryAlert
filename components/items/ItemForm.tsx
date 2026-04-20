@@ -2,20 +2,46 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { InventoryItem, Tier } from "@prisma/client";
+import type { Tier } from "@prisma/client";
+import AlertRecipientManager from "./AlertRecipientManager";
+import type { AlertContactOption, ItemRecipientDraft } from "./recipientTypes";
+
+type EditableItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  alertEmail: string;
+  imageUrl: string | null;
+  lowStockThreshold: number | null;
+  alertEmailEnabled: boolean;
+  scanCooldownMinutes: number;
+  scanAcknowledgement: string | null;
+  alertRecipients: ItemRecipientDraft[];
+};
 
 interface Props {
-  item?: InventoryItem;
+  item?: EditableItem;
   mode: "create" | "edit";
   currentTier: Tier;
+  contacts: AlertContactOption[];
+  hasLockedProRecipients?: boolean;
 }
 
-export default function ItemForm({ item, mode, currentTier }: Props) {
+export default function ItemForm({
+  item,
+  mode,
+  currentTier,
+  contacts,
+  hasLockedProRecipients = false,
+}: Props) {
   const router = useRouter();
   const isPro = currentTier === "PRO";
   const [name, setName] = useState(item?.name ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
   const [alertEmail, setAlertEmail] = useState(item?.alertEmail ?? "");
+  const [recipients, setRecipients] = useState<ItemRecipientDraft[]>(
+    item?.alertRecipients ?? []
+  );
   const [imageUrl, setImageUrl] = useState(item?.imageUrl ?? "");
   const [lowStockThreshold, setLowStockThreshold] = useState(
     item?.lowStockThreshold != null ? String(item.lowStockThreshold) : ""
@@ -68,7 +94,36 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
       const payload = {
         name,
         description: description || undefined,
-        alertEmail,
+        ...(isPro
+          ? {
+              alertRecipients: recipients.map((recipient) => {
+                if (recipient.kind === "CONTACT") {
+                  return {
+                    kind: "CONTACT" as const,
+                    contactId: recipient.contactId,
+                  };
+                }
+
+                if (recipient.kind === "INLINE_EMAIL") {
+                  return {
+                    kind: "INLINE_EMAIL" as const,
+                    email: recipient.email,
+                  };
+                }
+
+                return {
+                  kind: "NEW_CONTACT" as const,
+                  name: recipient.name,
+                  email: recipient.email,
+                  cellPhone: recipient.cellPhone || undefined,
+                  emailEnabled: recipient.emailEnabled,
+                  smsOptIn: recipient.smsOptIn,
+                };
+              }),
+            }
+          : hasLockedProRecipients
+            ? {}
+            : { alertEmail }),
         imageUrl: imageUrl || undefined,
         lowStockThreshold: threshold && !isNaN(threshold) ? threshold : null,
         alertEmailEnabled,
@@ -148,27 +203,73 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
           Optional. Print this number on the label as a restock reminder.
         </p>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-on-surface-variant mb-1">
-          Alert email <span className="text-error">*</span>
-        </label>
-        <input
-          type="email"
-          value={alertEmail}
-          onChange={(e) => setAlertEmail(e.target.value)}
-          required
-          className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
-          placeholder="alerts@yourcompany.com"
+
+      {isPro ? (
+        <AlertRecipientManager
+          contacts={contacts}
+          recipients={recipients}
+          onChange={setRecipients}
+          allowCustomRecipientEntry={mode === "create"}
         />
-        <p className="text-xs text-outline mt-1">
-          This address receives low stock alerts when the QR code is scanned.
-        </p>
-      </div>
-      <div className="flex items-center justify-between py-1">
+      ) : hasLockedProRecipients ? (
+        <div className="space-y-3 rounded-xl border border-outline-variant p-4 bg-surface-container-low">
+          <div>
+            <p className="text-sm font-medium text-on-surface">Alert recipients</p>
+            <p className="text-xs text-outline mt-0.5">
+              This item uses Pro multi-recipient alerts. Upgrade to Pro to edit them.
+            </p>
+          </div>
+          {item?.alertRecipients.map((recipient) => (
+            <div
+              key={recipient.clientId}
+              className="rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3"
+            >
+              {recipient.kind === "CONTACT" ? (
+                (() => {
+                  const contact = contacts.find((entry) => entry.id === recipient.contactId);
+                  return (
+                    <>
+                      <p className="text-sm text-on-surface">
+                        {contact?.name ?? "Saved contact recipient"}
+                      </p>
+                      <p className="text-xs text-on-surface-variant mt-1">
+                        {contact?.email ?? "Recipient details are preserved until you upgrade."}
+                      </p>
+                    </>
+                  );
+                })()
+              ) : recipient.kind === "INLINE_EMAIL" ? (
+                <p className="text-sm text-on-surface">{recipient.email}</p>
+              ) : (
+                <p className="text-sm text-on-surface">{recipient.email}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
         <div>
-          <p className="text-sm font-medium text-on-surface">Alert emails</p>
+          <label className="block text-sm font-medium text-on-surface-variant mb-1">
+            Alert email <span className="text-error">*</span>
+          </label>
+          <input
+            type="email"
+            value={alertEmail}
+            onChange={(e) => setAlertEmail(e.target.value)}
+            required
+            className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
+            placeholder="alerts@yourcompany.com"
+          />
+          <p className="text-xs text-outline mt-1">
+            This address receives low stock alerts when the QR code is scanned.
+          </p>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-on-surface">Enable email notifications</p>
           <p className="text-xs text-outline mt-0.5">
-            Send an email when this item&apos;s QR code is scanned
+            Turn off all email delivery for this item without removing its recipients.
           </p>
         </div>
         <button
@@ -187,53 +288,48 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
           />
         </button>
       </div>
-      <div className="space-y-4 rounded-xl border border-outline-variant p-4 bg-surface-container-low">
-        <div>
-          <p className="text-sm font-medium text-on-surface">Pro scan controls</p>
-          <p className="text-xs text-outline mt-0.5">
-            Configure per-item scan timeout and acknowledgement message.
-          </p>
-          {!isPro && (
-            <p className="text-xs text-secondary mt-1">
-              Upgrade to Pro to customize these settings.
+      {isPro && (
+        <div className="space-y-4 rounded-xl border border-outline-variant p-4 bg-surface-container-low">
+          <div>
+            <p className="text-sm font-medium text-on-surface">Pro scan controls</p>
+            <p className="text-xs text-outline mt-0.5">
+              Configure per-item scan timeout and acknowledgement message.
             </p>
-          )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">
+              Scan timeout (minutes)
+            </label>
+            <input
+              type="number"
+              value={scanCooldownMinutes}
+              onChange={(e) => setScanCooldownMinutes(e.target.value)}
+              min={1}
+              max={1440}
+              className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface"
+            />
+            <p className="text-xs text-outline mt-1">
+              How long to wait before another email alert can be sent for this item.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">
+              QR acknowledgement message
+            </label>
+            <textarea
+              value={scanAcknowledgement}
+              onChange={(e) => setScanAcknowledgement(e.target.value)}
+              rows={3}
+              maxLength={280}
+              placeholder="Thanks! We received your scan and notified the team."
+              className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface resize-none"
+            />
+            <p className="text-xs text-outline mt-1">
+              Optional. This replaces the default message shown after scanning.
+            </p>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-on-surface-variant mb-1">
-            Scan timeout (minutes)
-          </label>
-          <input
-            type="number"
-            value={scanCooldownMinutes}
-            onChange={(e) => setScanCooldownMinutes(e.target.value)}
-            min={1}
-            max={1440}
-            disabled={!isPro}
-            className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface disabled:opacity-60"
-          />
-          <p className="text-xs text-outline mt-1">
-            How long to wait before another email alert can be sent for this item.
-          </p>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-on-surface-variant mb-1">
-            QR acknowledgement message
-          </label>
-          <textarea
-            value={scanAcknowledgement}
-            onChange={(e) => setScanAcknowledgement(e.target.value)}
-            rows={3}
-            maxLength={280}
-            disabled={!isPro}
-            placeholder="Thanks! We received your scan and notified the team."
-            className="w-full border border-outline rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface-container-lowest text-on-surface resize-none disabled:opacity-60"
-          />
-          <p className="text-xs text-outline mt-1">
-            Optional. This replaces the default message shown after scanning.
-          </p>
-        </div>
-      </div>
+      )}
       <div>
         <label className="block text-sm font-medium text-on-surface-variant mb-1">
           Image (optional)
@@ -253,7 +349,7 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
           className="block text-sm text-on-surface-variant file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-surface-container file:text-on-surface-variant hover:file:bg-surface-container-high"
         />
         {uploading && (
-          <p className="text-xs text-secondary mt-1">Uploading…</p>
+          <p className="text-xs text-secondary mt-1">Uploading...</p>
         )}
       </div>
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
@@ -264,11 +360,11 @@ export default function ItemForm({ item, mode, currentTier }: Props) {
         >
           {loading
             ? mode === "create"
-              ? "Creating…"
-              : "Saving…"
+              ? "Creating..."
+              : "Saving..."
             : mode === "create"
-            ? "Create item"
-            : "Save changes"}
+              ? "Create item"
+              : "Save changes"}
         </button>
         <button
           type="button"

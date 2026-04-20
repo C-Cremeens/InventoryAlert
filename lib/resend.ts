@@ -21,7 +21,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
   });
 }
 
-export async function sendAlertEmail(to: string, itemName: string): Promise<void> {
+export async function sendAlertEmail(to: string | string[], itemName: string): Promise<void> {
   const now = new Date().toLocaleString("en-US", { timeZone: "UTC" });
   await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
