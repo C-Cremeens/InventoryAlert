@@ -69,7 +69,6 @@ export async function POST(_req: NextRequest, { params }: Params) {
       "Staff have already been notified about this item recently. No additional alert was sent.",
   };
 
-  // If alert emails are disabled for this item, record the scan but skip email
   if (item.alertEmailEnabled === false) {
     const request = await prisma.stockingRequest.create({
       data: { itemId: item.id, emailSent: false },
@@ -88,6 +87,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
       alreadyNotified: false,
       itemName: item.name,
       acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
+      emailFailed: false,
     });
   }
 
@@ -131,7 +131,6 @@ export async function POST(_req: NextRequest, { params }: Params) {
   });
 
   if (recentEmailSent) {
-    // Rate limited — create a record but don't send email
     const request = await prisma.stockingRequest.create({
       data: { itemId: item.id, emailSent: false },
     });
@@ -150,10 +149,10 @@ export async function POST(_req: NextRequest, { params }: Params) {
       itemName: item.name,
       acknowledgementMessage:
         scanAcknowledgement || defaultAcknowledgements.alreadyNotified,
+      emailFailed: false,
     });
   }
 
-  // Create stocking request and send email
   const request = await prisma.stockingRequest.create({
     data: { itemId: item.id, emailSent: true },
   });
@@ -167,16 +166,18 @@ export async function POST(_req: NextRequest, { params }: Params) {
     emailSent: request.emailSent,
   });
 
+  let emailFailed = false;
   try {
     await sendAlertEmail(effectiveRecipientEmails, item.name);
   } catch (err) {
     console.error("Failed to send alert email:", err);
-    // Don't fail the request if email fails — the stocking request was still created
+    emailFailed = true;
   }
 
   return NextResponse.json({
     alreadyNotified: false,
     itemName: item.name,
     acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
+    emailFailed,
   });
 }

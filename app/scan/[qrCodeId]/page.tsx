@@ -5,7 +5,6 @@ type Props = { params: Promise<{ qrCodeId: string }> };
 export default async function ScanPage({ params }: Props) {
   const { qrCodeId } = await params;
 
-  // Determine the base URL for the internal API call
   const headersList = await headers();
   const host = headersList.get("host") ?? "localhost:3000";
   const protocol = host.startsWith("localhost") ? "http" : "https";
@@ -14,6 +13,7 @@ export default async function ScanPage({ params }: Props) {
   let itemName = "";
   let alreadyNotified = false;
   let acknowledgementMessage = "";
+  let emailFailed = false;
   let error = false;
 
   try {
@@ -25,7 +25,8 @@ export default async function ScanPage({ params }: Props) {
       const data = await res.json();
       itemName = data.itemName;
       alreadyNotified = data.alreadyNotified;
-      acknowledgementMessage = data.acknowledgementMessage;
+      acknowledgementMessage = data.acknowledgementMessage ?? "";
+      emailFailed = data.emailFailed ?? false;
     } else {
       error = true;
     }
@@ -37,7 +38,6 @@ export default async function ScanPage({ params }: Props) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-          <div className="text-4xl mb-4">❓</div>
           <h1 className="text-lg font-bold text-gray-900 mb-2">
             Item not found
           </h1>
@@ -55,7 +55,6 @@ export default async function ScanPage({ params }: Props) {
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
         {alreadyNotified ? (
           <>
-            <div className="text-4xl mb-4">✅</div>
             <h1 className="text-lg font-bold text-gray-900 mb-2">
               Already notified
             </h1>
@@ -68,15 +67,16 @@ export default async function ScanPage({ params }: Props) {
           </>
         ) : (
           <>
-            <div className="text-4xl mb-4">📦</div>
             <h1 className="text-lg font-bold text-gray-900 mb-2">
-              Alert sent!
+              {emailFailed ? "Alert may not have been sent" : "Alert sent!"}
             </h1>
             <p className="text-sm text-gray-600 mb-1">
               <strong>{itemName}</strong>
             </p>
             <p className="text-sm text-gray-500">
-              {acknowledgementMessage}
+              {emailFailed
+                ? "Your scan was recorded, but there was a problem sending the alert email. Please notify staff directly."
+                : acknowledgementMessage}
             </p>
           </>
         )}
