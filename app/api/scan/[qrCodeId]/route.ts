@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendAlertEmail } from "@/lib/resend";
-import { publishStockingRequestEvent } from "@/lib/realtime";
 import { sendStockingPushNotification } from "@/lib/push";
 import { getEffectiveRecipientEmails } from "@/lib/alert-recipients";
 
@@ -15,15 +14,6 @@ async function notifyStockingRequestCreated(args: {
   createdAt: Date;
   emailSent: boolean;
 }) {
-  publishStockingRequestEvent(args.userId, {
-    requestId: args.requestId,
-    itemId: args.itemId,
-    itemName: args.itemName,
-    status: "PENDING",
-    emailSent: args.emailSent,
-    createdAt: args.createdAt.toISOString(),
-  });
-
   try {
     await sendStockingPushNotification({
       userId: args.userId,
@@ -172,6 +162,17 @@ export async function POST(_req: NextRequest, { params }: Params) {
   } catch (err) {
     console.error("Failed to send alert email:", err);
     emailFailed = true;
+    // The cooldown window only counts emailSent:true requests — flip this one
+    // back so the next scan retries the alert instead of being suppressed for
+    // the full cooldown with no email ever delivered.
+    try {
+      await prisma.stockingRequest.update({
+        where: { id: request.id },
+        data: { emailSent: false },
+      });
+    } catch (updateErr) {
+      console.error("Failed to reset emailSent after send failure:", updateErr);
+    }
   }
 
   return NextResponse.json({
