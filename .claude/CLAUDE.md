@@ -284,8 +284,9 @@ Unit tests run on **Vitest** (`vitest.config.ts` maps the `@/` alias; node envir
 
 | # | Area | Description | Priority |
 |---|---|---|---|
-| 3 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium |
-| 7 | Request notifications | ~~Resolved~~ — requests page polls `/api/requests` every 20s (serverless-safe); instant delivery via web push | — |
+| 1 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented (#9) | Medium |
+| 2 | Error monitoring (ops) | `/api/health` + structured `onRequestError` logs exist; hosted error monitoring (e.g. Sentry DSN) and an uptime monitor still need provisioning (#64) | Medium |
+| 3 | Email verification | Credential registrations aren't email-verified (Google sign-ins are); alert recipients can be arbitrary third-party addresses (#68) | Low |
 
 ---
 
