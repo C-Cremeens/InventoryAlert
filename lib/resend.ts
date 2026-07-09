@@ -11,6 +11,17 @@ function getResendClient(): Resend {
   return resendClient;
 }
 
+// User-controlled values (e.g. item names) must be escaped before being
+// interpolated into email HTML — recipients may not be the account owner.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
   await getResendClient().emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
@@ -32,14 +43,16 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
 
 export async function sendAlertEmail(to: string | string[], itemName: string): Promise<void> {
   const now = new Date().toLocaleString("en-US", { timeZone: "UTC" });
+  const safeItemName = escapeHtml(itemName);
   await getResendClient().emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to,
+    // Subjects are rendered as plain text by mail clients — no escaping needed there.
     subject: `Low Stock Alert: ${itemName}`,
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
         <h2 style="color: #dc2626;">Low Stock Alert</h2>
-        <p>A low stock alert was triggered for <strong>${itemName}</strong>.</p>
+        <p>A low stock alert was triggered for <strong>${safeItemName}</strong>.</p>
         <p>A QR code was scanned at <strong>${now} UTC</strong>, indicating that this item may need restocking.</p>
         <p>Please log in to your InventoryAlert dashboard to review and action the stocking request.</p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
