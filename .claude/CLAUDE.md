@@ -37,6 +37,8 @@
 | File Storage | Vercel Blob | ^2.3.1 |
 | QR Code | qrcode | ^1.5.4 |
 | Push Notifications | web-push (VAPID) | ^3.x |
+| Linting | ESLint + eslint-config-next (flat config) | ^9 / ^16 |
+| CI | GitHub Actions (`.github/workflows/ci.yml`) — lint, typecheck, test, build | — |
 
 > **Note:** This project uses **Next.js 16** with the App Router — APIs, conventions, and file structure may differ from older Next.js versions. Always read `node_modules/next/dist/docs/` before writing new Next.js code.
 
@@ -128,7 +130,10 @@
 ├── next.config.ts
 ├── package.json
 ├── tsconfig.json
-└── postcss.config.mjs
+├── postcss.config.mjs
+├── eslint.config.mjs             # ESLint flat config (next/core-web-vitals + typescript)
+├── instrumentation.ts            # Startup hook — runs lib/env.ts validation
+└── .github/workflows/ci.yml     # CI: lint, tsc, test, env-free build
 ```
 
 ---
