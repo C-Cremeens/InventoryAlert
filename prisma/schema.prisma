@@ -43,6 +43,7 @@ model User {
   stripeCustomerId       String?         @unique
   stripeSubscriptionId   String?         @unique
   stripeCurrentPeriodEnd DateTime?
+  stripeSubscriptionStatus String?
   emailVerifiedAt        DateTime?
   passwordResetToken     String?
   passwordResetExpiry    DateTime?
