@@ -38,6 +38,7 @@
 | QR Code | qrcode | ^1.5.4 |
 | Push Notifications | web-push (VAPID) | ^3.x |
 | Linting | ESLint + eslint-config-next (flat config) | ^9 / ^16 |
+| Testing | Vitest (`*.test.ts` alongside source) | ^4 |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) — lint, typecheck, test, build | — |
 
 > **Note:** This project uses **Next.js 16** with the App Router — APIs, conventions, and file structure may differ from older Next.js versions. Always read `node_modules/next/dist/docs/` before writing new Next.js code.
@@ -259,21 +260,21 @@ Cascade deletes: `User → InventoryItem → StockingRequest`
 
 ## Testing Instructions
 
-> **Known gap: No tests exist in this codebase.**
+Unit tests run on **Vitest** (`vitest.config.ts` maps the `@/` alias; node environment).
 
-There is no test runner, no test directory, and no Jest/Vitest configuration. This is a known gap.
+- Run with `npm test` (`vitest run`) — CI runs it on every PR
+- Tests live alongside source files as `*.test.ts`
+- Existing coverage: `lib/tier.test.ts`, `lib/validations/item.test.ts`, `lib/rate-limit.test.ts` (Prisma mocked via `vi.mock`), `lib/env.test.ts` (uses `vi.stubEnv`)
 
-**When adding tests:**
-1. Add Vitest (recommended for Next.js App Router) or Jest with `jest-environment-jsdom`
-2. Place unit tests alongside source files as `*.test.ts` or in a top-level `__tests__/` directory
-3. Integration tests for API routes can use `@testing-library/react` + MSW for API mocking
-4. Add a `test` script to `package.json`: `"test": "vitest run"`
+**Conventions:**
+- Mock `@/lib/prisma` with `vi.mock` for modules that touch the DB
+- Use `vi.stubEnv` / `vi.unstubAllEnvs` for env-dependent code
+- Integration tests for API routes (future) can use `@testing-library/react` + MSW
 
-**Priority areas to test first:**
-- `lib/tier.ts` — `canCreateItem()` pure function (easy wins)
-- `lib/validations/` — Zod schema validation edge cases
-- `/api/scan/[qrCodeId]` — rate limiting logic
+**Not yet covered (good next targets):**
+- `/api/scan/[qrCodeId]` route flow (cooldown + recipients) — needs a Prisma mock or test DB
 - `/api/auth/register` — validation and duplicate email handling
+- Stripe webhook tier transitions
 
 ---
 
@@ -283,7 +284,6 @@ There is no test runner, no test directory, and no Jest/Vitest configuration. Th
 
 | # | Area | Description | Priority |
 |---|---|---|---|
-| 1 | Testing | No tests exist — no test runner configured | High |
 | 3 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium |
 | 7 | Request notifications | ~~Resolved~~ — requests page polls `/api/requests` every 20s (serverless-safe); instant delivery via web push | — |
 
