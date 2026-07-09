@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { GoogleSignInRequiredError } from "@/lib/auth-errors";
 import { ensureCredentialsIdentity, toSessionUser } from "@/lib/auth-identities";
 import { normalizeEmail } from "@/lib/auth-validation";
+import { RATE_LIMITS, checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 declare module "next-auth" {
   interface Session {
@@ -50,10 +51,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const email = normalizeEmail(credentials.email as string);
+
+        // Brute-force protection: failed and successful attempts both count,
+        // keyed per IP + target account. Limited attempts surface as a normal
+        // credential failure so attackers learn nothing from the response.
+        const limit = await checkRateLimit(
+          `login:${getClientIp(request)}:${email}`,
+          RATE_LIMITS.loginPerIpEmail
+        );
+        if (!limit.allowed) {
+          console.warn(`Login rate limit hit for ${email}`);
+          throw new CredentialsSignin();
+        }
+
         const user = await prisma.user.findFirst({
           where: {
             email: {

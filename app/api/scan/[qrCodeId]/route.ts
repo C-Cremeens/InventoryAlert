@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { sendAlertEmail } from "@/lib/resend";
 import { sendStockingPushNotification } from "@/lib/push";
 import { getEffectiveRecipientEmails } from "@/lib/alert-recipients";
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 type Params = { params: Promise<{ qrCodeId: string }> };
 
@@ -25,8 +31,33 @@ async function notifyStockingRequestCreated(args: {
   }
 }
 
-export async function POST(_req: NextRequest, { params }: Params) {
+export async function POST(req: NextRequest, { params }: Params) {
   const { qrCodeId } = await params;
+
+  // Both checks run before the item lookup so a flood of scans (or probes
+  // against random QR ids) is cut off without touching the item table.
+  const ip = getClientIp(req);
+  const ipLimit = await checkRateLimit(
+    `scan:ip:${ip}:${qrCodeId}`,
+    RATE_LIMITS.scanPerIp
+  );
+  if (!ipLimit.allowed) {
+    return rateLimitResponse(
+      ipLimit.retryAfterSeconds,
+      "Too many scans from this device. Please try again later."
+    );
+  }
+
+  const itemLimit = await checkRateLimit(
+    `scan:item:${qrCodeId}`,
+    RATE_LIMITS.scanPerItem
+  );
+  if (!itemLimit.allowed) {
+    return rateLimitResponse(
+      itemLimit.retryAfterSeconds,
+      "This item has been scanned too many times recently. Please try again later."
+    );
+  }
 
   const item = await prisma.inventoryItem.findUnique({
     where: { qrCodeId },

@@ -111,6 +111,7 @@
 │   ├── stripe.ts                 # Stripe client
 │   ├── resend.ts                 # Resend email client + sendAlertEmail() + sendPasswordResetEmail()
 │   ├── push.ts                   # sendStockingPushNotification() via web-push (VAPID)
+│   ├── rate-limit.ts             # DB-backed fixed-window rate limiter (RATE_LIMITS, checkRateLimit)
 │   ├── tier.ts                   # TIER_LIMITS, canCreateItem()
 │   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG, TextElement, getDefaultTextElements()
 │   └── validations/

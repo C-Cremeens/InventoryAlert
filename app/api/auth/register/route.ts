@@ -4,11 +4,28 @@ import { prisma } from "@/lib/prisma";
 import { AuthProvider } from "@prisma/client";
 import { normalizeEmail, registerSchema } from "@/lib/auth-validation";
 import { ensureCredentialsIdentity } from "@/lib/auth-identities";
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 const TERMS_VERSION = "2026-04-18";
 
 export async function POST(req: NextRequest) {
   try {
+    const limit = await checkRateLimit(
+      `register:ip:${getClientIp(req)}`,
+      RATE_LIMITS.registerPerIp
+    );
+    if (!limit.allowed) {
+      return rateLimitResponse(
+        limit.retryAfterSeconds,
+        "Too many registration attempts. Please try again later."
+      );
+    }
+
     const body = await req.json();
     const parsed = registerSchema.safeParse(body);
     if (!parsed.success) {
