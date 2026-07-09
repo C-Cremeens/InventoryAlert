@@ -166,6 +166,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return updatedItem;
     });
 
+    // Remove the previous blob when the image was replaced or cleared, so
+    // storage doesn't accumulate unreferenced (but still public) images.
+    if (
+      rest.imageUrl !== undefined &&
+      existing.imageUrl &&
+      (rest.imageUrl || null) !== existing.imageUrl
+    ) {
+      try {
+        await del(existing.imageUrl);
+      } catch (blobErr) {
+        console.error("Failed to delete replaced blob image:", blobErr);
+      }
+    }
+
     return NextResponse.json(updated);
   } catch (err) {
     if (err instanceof RecipientConfigError) {
