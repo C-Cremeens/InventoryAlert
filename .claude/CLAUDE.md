@@ -274,7 +274,7 @@ There is no test runner, no test directory, and no Jest/Vitest configuration. Th
 
 ## README Update Instructions
 
-The current `README.md` is the default Next.js template with `Lets go` appended. It should be updated to include:
+The current `README.md` covers features and plan differences but still needs:
 - Project description and feature list
 - Prerequisites (Node, PostgreSQL, Stripe account, Resend API key)
 - `.env` setup instructions (reference `.env.example`)
@@ -285,13 +285,23 @@ The current `README.md` is the default Next.js template with `Lets go` appended.
 
 ## Known Gaps & TODOs
 
-| # | Area | Description | Priority |
-|---|---|---|---|
-| 1 | Testing | No tests exist — no test runner configured | High |
-| 2 | README | Still the default Next.js template | Medium |
-| 3 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium |
-| 4 | Email error handling | `sendAlertEmail` errors are caught and logged (`console.error`) but the scan response still returns 200 — user gets no indication email failed | Medium |
-| 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
+A full production-readiness review was performed on 2026-07-09; every gap below is tracked as a GitHub issue, with launch checklist in tracking issue #70.
+
+| # | Area | Description | Priority | Issue |
+|---|---|---|---|---|
+| 1 | Alert reliability | Scan route writes `emailSent: true` **before** sending; a Resend failure silently suppresses alerts for the whole cooldown window | High | #58 |
+| 2 | Rate limiting | None anywhere — public scan endpoint allows unbounded `StockingRequest` creation; login/register/forgot-password unthrottled | High | #59 |
+| 3 | Security headers | No HSTS, frame-ancestors, nosniff, referrer policy, or CSP configured | High | #60 |
+| 4 | Realtime on serverless | `lib/realtime.ts` is in-memory pub/sub — SSE events are never delivered across serverless/multi-instance deploys (web push unaffected) | High | #61 |
+| 5 | Env handling | `lib/resend.ts` instantiates the client at module scope, so `next build` fails without `RESEND_API_KEY`; no startup validation of required env vars | High | #62 |
+| 6 | Testing / CI | No tests, no ESLint, no lint script, no GitHub Actions workflows | High | #7, #63 |
+| 7 | Observability | Errors only go to `console.error`; no error monitoring service, no `/api/health` endpoint | Medium | #64 |
+| 8 | Stripe lifecycle | `customer.subscription.updated` ignores `subscription.status` — `past_due`/`unpaid` users keep PRO | Medium | #65 |
+| 9 | Email HTML injection | User-controlled item names interpolated unescaped into alert email HTML/subject | Medium | #66 |
+| 10 | Blob handling | Item DELETE calls `del()` twice (second unguarded → 500 after successful delete); replaced item images leave orphaned blobs | Low | #67, #69 |
+| 11 | Email verification | No verification at registration; `alertEmail` can be any third-party address | Low | #68 |
+| 12 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium | #9 |
+| 13 | README | Has features/plans overview but lacks prerequisites and `.env` setup docs | Low | — |
 
 ---
 
