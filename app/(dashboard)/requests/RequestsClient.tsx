@@ -1,26 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { RequestStatus } from "@prisma/client";
 
 const FILTER_KEY = "requests-status-filter";
+const POLL_INTERVAL_MS = 20_000;
 
 interface Request {
   id: string;
   status: RequestStatus;
   emailSent: boolean;
-  createdAt: Date;
+  createdAt: Date | string;
   item: { name: string; id: string };
-}
-
-interface RealtimeEvent {
-  requestId: string;
-  itemId: string;
-  itemName: string;
-  status: RequestStatus;
-  emailSent: boolean;
-  createdAt: string;
 }
 
 interface Props {
@@ -65,53 +57,63 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Poll for new requests. Serverless-friendly replacement for the previous
+  // SSE stream, whose in-memory pub/sub never delivered events across
+  // serverless function instances. Web push (sw.js) remains the instant channel.
+  const seenIdsRef = useRef<Set<string>>(new Set(initialRequests.map((r) => r.id)));
+
   useEffect(() => {
-    const source = new EventSource("/api/requests/stream");
+    let cancelled = false;
 
-    source.addEventListener("connected", () => {
-      setLiveStatus("live");
-    });
+    async function poll() {
+      try {
+        const url = activeStatus
+          ? `/api/requests?status=${activeStatus}`
+          : "/api/requests";
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Poll failed: ${res.status}`);
+        const data = (await res.json()) as Request[];
+        if (cancelled) return;
 
-    source.addEventListener("stocking-request", (event) => {
-      setLiveStatus("live");
-      const payload = JSON.parse((event as MessageEvent).data) as RealtimeEvent;
+        const fresh = data.filter((r) => !seenIdsRef.current.has(r.id));
+        for (const r of fresh) seenIdsRef.current.add(r.id);
 
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        new Notification("New stocking request", {
-          body: `${payload.itemName} needs attention.`,
-          tag: `stocking-request-${payload.requestId}`,
-        });
-      }
-
-      setRequests((prev) => {
-        const exists = prev.some((request) => request.id === payload.requestId);
-        if (exists) return prev;
-
-        const nextRequest: Request = {
-          id: payload.requestId,
-          status: payload.status,
-          emailSent: payload.emailSent,
-          createdAt: new Date(payload.createdAt),
-          item: {
-            id: payload.itemId,
-            name: payload.itemName,
-          },
-        };
-
-        if (activeStatus && nextRequest.status !== activeStatus) {
-          return prev;
+        if (
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted"
+        ) {
+          for (const r of fresh) {
+            if (r.status === "PENDING") {
+              new Notification("New stocking request", {
+                body: `${r.item.name} needs attention.`,
+                tag: `stocking-request-${r.id}`,
+              });
+            }
+          }
         }
 
-        return [nextRequest, ...prev];
-      });
-    });
+        setLiveStatus("live");
+        setRequests(data);
+      } catch {
+        if (!cancelled) setLiveStatus("offline");
+      }
+    }
 
-    source.onerror = () => {
-      setLiveStatus("offline");
+    poll();
+    const interval = setInterval(() => {
+      if (!document.hidden) poll();
+    }, POLL_INTERVAL_MS);
+
+    // Refresh immediately when the tab regains focus
+    const onVisibilityChange = () => {
+      if (!document.hidden) poll();
     };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      source.close();
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [activeStatus]);
 
@@ -156,10 +158,10 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
         />
         <span className="text-on-surface-variant">
           {liveStatus === "live"
-            ? "Live updates on"
+            ? "Auto-refresh on"
             : liveStatus === "connecting"
-              ? "Connecting live updates…"
-              : "Live updates disconnected"}
+              ? "Loading latest requests…"
+              : "Auto-refresh unavailable — check your connection"}
         </span>
       </div>
 

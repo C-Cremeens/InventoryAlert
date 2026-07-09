@@ -198,9 +198,5 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   await prisma.inventoryItem.delete({ where: { id: itemId } });
 
-  if (existing.imageUrl) {
-    await del(existing.imageUrl);
-  }
-
   return NextResponse.json({ ok: true });
 }

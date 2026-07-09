@@ -74,8 +74,7 @@
 │   │   │   └── [itemId]/route.ts # PATCH, DELETE /api/items/:id
 │   │   ├── requests/
 │   │   │   ├── route.ts          # GET /api/requests
-│   │   │   ├── [requestId]/route.ts  # PATCH /api/requests/:id
-│   │   │   └── stream/route.ts   # GET /api/requests/stream (SSE, authenticated)
+│   │   │   └── [requestId]/route.ts  # PATCH /api/requests/:id
 │   │   ├── push/
 │   │   │   ├── public-key/route.ts   # GET /api/push/public-key
 │   │   │   └── subscription/route.ts # POST / DELETE /api/push/subscription
@@ -112,7 +111,6 @@
 │   ├── stripe.ts                 # Stripe client
 │   ├── resend.ts                 # Resend email client + sendAlertEmail() + sendPasswordResetEmail()
 │   ├── push.ts                   # sendStockingPushNotification() via web-push (VAPID)
-│   ├── realtime.ts               # In-memory pub/sub for SSE stocking request events
 │   ├── tier.ts                   # TIER_LIMITS, canCreateItem()
 │   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG, TextElement, getDefaultTextElements()
 │   └── validations/
@@ -285,7 +283,7 @@ There is no test runner, no test directory, and no Jest/Vitest configuration. Th
 |---|---|---|---|
 | 1 | Testing | No tests exist — no test runner configured | High |
 | 3 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented | Medium |
-| 7 | Request notifications | No real-time notifications for new stocking requests (polling or websocket) | Low |
+| 7 | Request notifications | ~~Resolved~~ — requests page polls `/api/requests` every 20s (serverless-safe); instant delivery via web push | — |
 
 ---
 
