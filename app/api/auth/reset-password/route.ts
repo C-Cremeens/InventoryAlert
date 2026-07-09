@@ -4,9 +4,27 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { ensureCredentialsIdentity } from "@/lib/auth-identities";
 import { resetPasswordSchema } from "@/lib/auth-validation";
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
+    // Caps brute-force guessing of reset tokens.
+    const limit = await checkRateLimit(
+      `reset-password:ip:${getClientIp(req)}`,
+      RATE_LIMITS.resetPasswordPerIp
+    );
+    if (!limit.allowed) {
+      return rateLimitResponse(
+        limit.retryAfterSeconds,
+        "Too many attempts. Please try again later."
+      );
+    }
+
     const body = await req.json();
     const parsed = resetPasswordSchema.safeParse(body);
     if (!parsed.success) {

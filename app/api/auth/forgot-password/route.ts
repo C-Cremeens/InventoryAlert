@@ -4,6 +4,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/resend";
 import { normalizeEmail } from "@/lib/auth-validation";
+import {
+  RATE_LIMITS,
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 const schema = z.object({
   email: z.string().email(),
@@ -11,6 +17,17 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const ipLimit = await checkRateLimit(
+      `forgot-password:ip:${getClientIp(req)}`,
+      RATE_LIMITS.forgotPasswordPerIp
+    );
+    if (!ipLimit.allowed) {
+      return rateLimitResponse(
+        ipLimit.retryAfterSeconds,
+        "Too many password reset requests. Please try again later."
+      );
+    }
+
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -21,6 +38,18 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedEmail = normalizeEmail(parsed.data.email);
+
+    // Also cap per target address across all IPs so a distributed attacker
+    // can't bombard one inbox with reset emails.
+    const emailLimit = await checkRateLimit(
+      `forgot-password:email:${normalizedEmail}`,
+      RATE_LIMITS.forgotPasswordPerEmail
+    );
+    if (!emailLimit.allowed) {
+      // Same body as the success path — a distinct error here would allow
+      // user enumeration; suppressing the send is enough.
+      return NextResponse.json({ ok: true });
+    }
     const user = await prisma.user.findFirst({
       where: {
         email: {

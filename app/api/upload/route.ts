@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { put } from "@vercel/blob";
+import { RATE_LIMITS, checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
@@ -8,6 +9,17 @@ const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limit = await checkRateLimit(
+    `upload:user:${session.user.id}`,
+    RATE_LIMITS.uploadPerUser
+  );
+  if (!limit.allowed) {
+    return rateLimitResponse(
+      limit.retryAfterSeconds,
+      "Too many uploads. Please try again later."
+    );
+  }
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;

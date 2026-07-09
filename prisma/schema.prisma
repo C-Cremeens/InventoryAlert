@@ -158,6 +158,21 @@ model InventoryItemRecipient {
   @@index([contactId])
 }
 
+// Fixed-window rate limit counters, keyed by "<scope>:<identifier>".
+// DB-backed so limits hold across serverless instances. Old windows are
+// cleaned up opportunistically by lib/rate-limit.ts.
+model RateLimitWindow {
+  id          String   @id @default(cuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([key, windowStart])
+  @@index([windowStart])
+}
+
 model StockingRequest {
   id        String        @id @default(cuid())
   itemId    String
