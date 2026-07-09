@@ -75,6 +75,7 @@
 │   │   ├── requests/
 │   │   │   ├── route.ts          # GET /api/requests
 │   │   │   └── [requestId]/route.ts  # PATCH /api/requests/:id
+│   │   ├── health/route.ts       # GET /api/health — DB round-trip, for uptime monitors (public)
 │   │   ├── push/
 │   │   │   ├── public-key/route.ts   # GET /api/push/public-key
 │   │   │   └── subscription/route.ts # POST / DELETE /api/push/subscription
