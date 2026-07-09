@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "eslint .",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:studio": "prisma studio"
@@ -37,6 +38,8 @@
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "dotenv": "^17.4.0",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.10",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

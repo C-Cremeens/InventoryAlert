@@ -48,9 +48,12 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
   const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "offline">("connecting");
 
   // Sync local state when the server sends new filtered data after navigation
-  useEffect(() => {
+  // (state adjustment during render — https://react.dev/learn/you-might-not-need-an-effect)
+  const [prevInitialRequests, setPrevInitialRequests] = useState(initialRequests);
+  if (prevInitialRequests !== initialRequests) {
+    setPrevInitialRequests(initialRequests);
     setRequests(initialRequests);
-  }, [initialRequests]);
+  }
 
   // Restore persisted filter on initial load when no filter is in the URL
   useEffect(() => {

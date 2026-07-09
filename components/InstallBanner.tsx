@@ -29,9 +29,15 @@ export default function InstallBanner() {
       detectedOs = "desktop";
     }
 
-    setOs(detectedOs);
-    setVisible(true);
-    requestAnimationFrame(() => setShown(true));
+    // Defer state updates to a frame callback so the effect body stays free of
+    // synchronous setState (react-hooks/set-state-in-effect); the nested frame
+    // preserves the mount-hidden → transition-in animation.
+    const frame = requestAnimationFrame(() => {
+      setOs(detectedOs);
+      setVisible(true);
+      requestAnimationFrame(() => setShown(true));
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   function handleDismiss() {

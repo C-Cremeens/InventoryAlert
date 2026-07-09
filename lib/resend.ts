@@ -1,9 +1,18 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy singleton — instantiating at module scope makes `next build` fail
+// when RESEND_API_KEY is unset (e.g. in CI), since Resend throws without a key.
+let resendClient: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-  await resend.emails.send({
+  await getResendClient().emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to,
     subject: "Reset your InventoryAlert password",
@@ -23,7 +32,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
 
 export async function sendAlertEmail(to: string | string[], itemName: string): Promise<void> {
   const now = new Date().toLocaleString("en-US", { timeZone: "UTC" });
-  await resend.emails.send({
+  await getResendClient().emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to,
     subject: `Low Stock Alert: ${itemName}`,

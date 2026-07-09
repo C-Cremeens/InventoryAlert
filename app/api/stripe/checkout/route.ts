@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient, getStripePriceIds, isStripeConfigured } from "@/lib/stripe";
 import { z } from "zod";
-import type { Tier } from "@prisma/client";
 
 const schema = z.object({
   tier: z.enum(["PRO"]),
