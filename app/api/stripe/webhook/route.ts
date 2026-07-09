@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
             tier,
             stripeCustomerId: session.customer as string,
             stripeSubscriptionId: subscription.id,
+            stripeSubscriptionStatus: subscription.status,
             stripeCurrentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
           },
         });
@@ -99,18 +100,23 @@ export async function POST(req: NextRequest) {
         const productId = typeof itemPrice?.product === "string" ? itemPrice.product : itemPrice?.product?.id;
         const priceId = itemPrice?.id;
 
-        let tier: Tier = "FREE";
-        if (
+        const matchesProPlan =
           (STRIPE_PRODUCTS.PRO && productId === STRIPE_PRODUCTS.PRO) ||
-          (!STRIPE_PRODUCTS.PRO && priceId === STRIPE_PRICES.PRO)
-        ) {
-          tier = "PRO";
-        }
+          (!STRIPE_PRODUCTS.PRO && priceId === STRIPE_PRICES.PRO);
+
+        // PRO is kept through `past_due` so access survives Stripe's dunning
+        // retries; `unpaid`, `canceled`, `paused` etc. downgrade immediately.
+        const statusGrantsAccess = ["active", "trialing", "past_due"].includes(
+          subscription.status
+        );
+
+        const tier: Tier = matchesProPlan && statusGrantsAccess ? "PRO" : "FREE";
 
         await prisma.user.update({
           where: { id: user.id },
           data: {
             tier,
+            stripeSubscriptionStatus: subscription.status,
             stripeCurrentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
           },
         });
@@ -119,7 +125,32 @@ export async function POST(req: NextRequest) {
           eventId: event.id,
           userId: user.id,
           subscriptionId: subscription.id,
+          subscriptionStatus: subscription.status,
           tier,
+        });
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId =
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : invoice.customer?.id;
+
+        const user = customerId
+          ? await prisma.user.findFirst({
+              where: { stripeCustomerId: customerId },
+              select: { id: true, email: true },
+            })
+          : null;
+
+        logWebhook("warn", event.type, {
+          eventId: event.id,
+          customerId,
+          userId: user?.id,
+          attemptCount: invoice.attempt_count,
+          nextPaymentAttempt: invoice.next_payment_attempt,
         });
         break;
       }
@@ -131,6 +162,7 @@ export async function POST(req: NextRequest) {
           data: {
             tier: "FREE",
             stripeSubscriptionId: null,
+            stripeSubscriptionStatus: null,
             stripeCurrentPeriodEnd: null,
           },
         });

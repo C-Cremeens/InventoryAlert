@@ -19,6 +19,7 @@ export default async function SettingsPage() {
         tier: true,
         stripeCustomerId: true,
         stripeCurrentPeriodEnd: true,
+        stripeSubscriptionStatus: true,
       },
     }),
     prisma.inventoryItem.count({ where: { userId: session.user.id } }),
@@ -66,6 +67,16 @@ export default async function SettingsPage() {
           <h2 className="font-semibold text-on-surface font-headline">Current Plan</h2>
           <TierBadge tier={tier} />
         </div>
+
+        {user.stripeSubscriptionStatus === "past_due" && (
+          <div className="rounded-lg bg-error-container text-on-error-container text-sm p-3">
+            <p className="font-medium">There&apos;s a problem with your payment method.</p>
+            <p className="mt-1">
+              Your last payment didn&apos;t go through. Update your payment details via
+              &ldquo;Manage subscription&rdquo; below to keep your Pro features.
+            </p>
+          </div>
+        )}
 
         <div className="text-sm text-on-surface-variant space-y-1">
           <p>
