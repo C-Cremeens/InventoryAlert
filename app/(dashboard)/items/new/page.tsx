@@ -6,7 +6,12 @@ import Link from "next/link";
 
 export default async function NewItemPage() {
   const session = await auth();
-  if (!session) return null;
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return null;
 
   const [count, contacts] = await Promise.all([
     prisma.inventoryItem.count({
@@ -34,9 +39,13 @@ export default async function NewItemPage() {
     const limit = TIER_LIMITS[session.user.tier];
     return (
       <div className="max-w-lg">
-        <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">New Item</h1>
+        <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">
+          New Item
+        </h1>
         <div className="bg-error-container rounded-xl p-6 text-center">
-          <p className="font-semibold text-on-error-container mb-2">Item limit reached</p>
+          <p className="font-semibold text-on-error-container mb-2">
+            Item limit reached
+          </p>
           <p className="text-sm text-on-error-container mb-4">
             Your {limit.label} plan allows up to {limit.maxItems} items. You
             have {count}.
@@ -54,7 +63,9 @@ export default async function NewItemPage() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">New Item</h1>
+      <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">
+        New Item
+      </h1>
       <ItemForm
         mode="create"
         currentTier={session.user.tier}

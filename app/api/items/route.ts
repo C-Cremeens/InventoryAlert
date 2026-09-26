@@ -1,7 +1,10 @@
+import { reportError } from "@/lib/monitoring";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createItemSchema } from "@/lib/validations/item";
+import { lockUser } from "@/lib/security";
+import { requireOwnedImage } from "@/lib/images";
 import { canCreateItem } from "@/lib/tier";
 import {
   RecipientConfigError,
@@ -10,7 +13,12 @@ import {
 
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const items = await prisma.inventoryItem.findMany({
     where: { userId: session.user.id },
@@ -23,28 +31,19 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (
+      !session?.user?.id ||
+      !session.user.emailVerifiedAt ||
+      !session.user.termsAcceptedAt
+    )
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const parsed = createItemSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
-        { status: 400 }
-      );
-    }
-
-    const count = await prisma.inventoryItem.count({
-      where: { userId: session.user.id },
-    });
-
-    if (!canCreateItem(session.user.tier, count)) {
-      return NextResponse.json(
-        {
-          error: "Item limit reached for your current plan. Please upgrade to add more items.",
-          code: "TIER_LIMIT",
-        },
-        { status: 403 }
+        { status: 400 },
       );
     }
 
@@ -59,11 +58,22 @@ export async function POST(req: NextRequest) {
           error: "Custom scan timeout and acknowledgement are Pro features.",
           code: "PRO_FEATURE_REQUIRED",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     const item = await prisma.$transaction(async (tx) => {
+      await lockUser(tx, session.user.id);
+      const count = await tx.inventoryItem.count({
+        where: { userId: session.user.id },
+      });
+      if (!canCreateItem(session.user.tier, count))
+        throw new RecipientConfigError(
+          "Item limit reached for your plan.",
+          403,
+          "TIER_LIMIT",
+        );
+      await requireOwnedImage(tx, parsed.data.imageUrl, session.user.id);
       const resolvedRecipients = await resolveRecipientWritePayload({
         tx,
         userId: session.user.id,
@@ -75,7 +85,7 @@ export async function POST(req: NextRequest) {
       const alertsEnabled = parsed.data.alertEmailEnabled ?? true;
       if (alertsEnabled && resolvedRecipients.effectiveRecipientCount === 0) {
         throw new RecipientConfigError(
-          "At least one email-enabled recipient is required while alerts are enabled."
+          "At least one email-enabled recipient is required while alerts are enabled.",
         );
       }
 
@@ -87,8 +97,10 @@ export async function POST(req: NextRequest) {
           alertEmail: resolvedRecipients.primaryAlertEmail,
           lowStockThreshold: parsed.data.lowStockThreshold,
           alertEmailEnabled: parsed.data.alertEmailEnabled,
-          scanCooldownMinutes: session.user.tier === "PRO" ? scanCooldownMinutes : 60,
-          scanAcknowledgement: session.user.tier === "PRO" ? scanAcknowledgement || null : null,
+          scanCooldownMinutes:
+            session.user.tier === "PRO" ? scanCooldownMinutes : 60,
+          scanAcknowledgement:
+            session.user.tier === "PRO" ? scanAcknowledgement || null : null,
           userId: session.user.id,
         },
       });
@@ -108,10 +120,13 @@ export async function POST(req: NextRequest) {
     if (err instanceof RecipientConfigError) {
       return NextResponse.json(
         { error: err.message, ...(err.code ? { code: err.code } : {}) },
-        { status: err.status }
+        { status: err.status },
       );
     }
-    console.error("[POST /api/items]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    reportError("[POST /api/items]", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

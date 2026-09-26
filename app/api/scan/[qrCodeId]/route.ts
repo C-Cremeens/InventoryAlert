@@ -1,215 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { sendAlertEmail } from "@/lib/resend";
-import { sendStockingPushNotification } from "@/lib/push";
-import { getEffectiveRecipientEmails } from "@/lib/alert-recipients";
+import { after } from "next/server";
+import { z } from "zod";
 import {
-  RATE_LIMITS,
   checkRateLimit,
   getClientIp,
   rateLimitResponse,
 } from "@/lib/rate-limit";
-
-type Params = { params: Promise<{ qrCodeId: string }> };
-
-async function notifyStockingRequestCreated(args: {
-  userId: string;
-  itemId: string;
-  itemName: string;
-  requestId: string;
-  createdAt: Date;
-  emailSent: boolean;
-}) {
-  try {
-    await sendStockingPushNotification({
-      userId: args.userId,
-      itemName: args.itemName,
-      requestId: args.requestId,
-    });
-  } catch (err) {
-    console.error("Failed sending stocking push notification", err);
-  }
-}
-
-export async function POST(req: NextRequest, { params }: Params) {
+import { recordScan } from "@/lib/scan";
+import { drainNotifications } from "@/lib/notifications";
+export const maxDuration = 60;
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ qrCodeId: string }> },
+) {
   const { qrCodeId } = await params;
-
-  // Both checks run before the item lookup so a flood of scans (or probes
-  // against random QR ids) is cut off without touching the item table.
-  const ip = getClientIp(req);
-  const ipLimit = await checkRateLimit(
-    `scan:ip:${ip}:${qrCodeId}`,
-    RATE_LIMITS.scanPerIp
-  );
-  if (!ipLimit.allowed) {
-    return rateLimitResponse(
-      ipLimit.retryAfterSeconds,
-      "Too many scans from this device. Please try again later."
+  const key = req.headers.get("Idempotency-Key");
+  if (!z.uuid().safeParse(qrCodeId).success || !z.uuid().safeParse(key).success)
+    return Response.json(
+      { error: "Invalid report. Please reopen the QR code." },
+      { status: 400 },
     );
-  }
-
-  const itemLimit = await checkRateLimit(
-    `scan:item:${qrCodeId}`,
-    RATE_LIMITS.scanPerItem
-  );
-  if (!itemLimit.allowed) {
-    return rateLimitResponse(
-      itemLimit.retryAfterSeconds,
-      "This item has been scanned too many times recently. Please try again later."
+  for (const [scope, limit] of [
+    [`scan:ip:${getClientIp(req)}`, 60],
+    [`scan:item:${qrCodeId}`, 120],
+  ] as const) {
+    const result = await checkRateLimit(
+      scope,
+      { limit, windowSeconds: 3600 },
+      true,
     );
+    if (!result.allowed) return rateLimitResponse(result.retryAfterSeconds);
   }
-
-  const item = await prisma.inventoryItem.findUnique({
-    where: { qrCodeId },
-    include: {
-      alertRecipients: {
-        orderBy: { position: "asc" },
-        select: {
-          kind: true,
-          inlineEmail: true,
-          contact: {
-            select: {
-              id: true,
-              email: true,
-              emailEnabled: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!item) {
-    return NextResponse.json({ error: "Item not found" }, { status: 404 });
-  }
-
-  const scanAcknowledgement = item.scanAcknowledgement?.trim();
-  const defaultAcknowledgements = {
-    sent: "A low stock alert has been sent to the responsible team member. Thank you!",
-    alreadyNotified:
-      "Staff have already been notified about this item recently. No additional alert was sent.",
-  };
-
-  if (item.alertEmailEnabled === false) {
-    const request = await prisma.stockingRequest.create({
-      data: { itemId: item.id, emailSent: false },
+  const result = await recordScan(qrCodeId, key!);
+  if (!result)
+    return Response.json({ error: "Item not found." }, { status: 404 });
+  if (result.requestId)
+    after(async () => {
+      await drainNotifications(result.requestId!);
     });
-
-    void notifyStockingRequestCreated({
-      userId: item.userId,
-      itemId: item.id,
-      itemName: item.name,
-      requestId: request.id,
-      createdAt: request.createdAt,
-      emailSent: request.emailSent,
-    });
-
-    return NextResponse.json({
-      alreadyNotified: false,
-      itemName: item.name,
-      acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
-      emailFailed: false,
-    });
-  }
-
-  const effectiveRecipientEmails = getEffectiveRecipientEmails(item.alertRecipients);
-
-  if (effectiveRecipientEmails.length === 0) {
-    const request = await prisma.stockingRequest.create({
-      data: { itemId: item.id, emailSent: false },
-    });
-
-    void notifyStockingRequestCreated({
-      userId: item.userId,
-      itemId: item.id,
-      itemName: item.name,
-      requestId: request.id,
-      createdAt: request.createdAt,
-      emailSent: request.emailSent,
-    });
-
-    console.error(
-      `[POST /api/scan/${qrCodeId}] Item "${item.id}" has no effective alert recipients configured.`
-    );
-
-    return NextResponse.json({
-      alreadyNotified: false,
-      itemName: item.name,
-      acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
-    });
-  }
-
-  // Check for a recent email-sent request within this item's configured cooldown window
-  const cooldownMinutes = item.scanCooldownMinutes ?? 60;
-  const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
-  const recentEmailSent = await prisma.stockingRequest.findFirst({
-    where: {
-      itemId: item.id,
-      emailSent: true,
-      createdAt: { gte: cooldownCutoff },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  if (recentEmailSent) {
-    const request = await prisma.stockingRequest.create({
-      data: { itemId: item.id, emailSent: false },
-    });
-
-    void notifyStockingRequestCreated({
-      userId: item.userId,
-      itemId: item.id,
-      itemName: item.name,
-      requestId: request.id,
-      createdAt: request.createdAt,
-      emailSent: request.emailSent,
-    });
-
-    return NextResponse.json({
-      alreadyNotified: true,
-      itemName: item.name,
-      acknowledgementMessage:
-        scanAcknowledgement || defaultAcknowledgements.alreadyNotified,
-      emailFailed: false,
-    });
-  }
-
-  const request = await prisma.stockingRequest.create({
-    data: { itemId: item.id, emailSent: true },
-  });
-
-  void notifyStockingRequestCreated({
-    userId: item.userId,
-    itemId: item.id,
-    itemName: item.name,
-    requestId: request.id,
-    createdAt: request.createdAt,
-    emailSent: request.emailSent,
-  });
-
-  let emailFailed = false;
-  try {
-    await sendAlertEmail(effectiveRecipientEmails, item.name);
-  } catch (err) {
-    console.error("Failed to send alert email:", err);
-    emailFailed = true;
-    // The cooldown window only counts emailSent:true requests — flip this one
-    // back so the next scan retries the alert instead of being suppressed for
-    // the full cooldown with no email ever delivered.
-    try {
-      await prisma.stockingRequest.update({
-        where: { id: request.id },
-        data: { emailSent: false },
-      });
-    } catch (updateErr) {
-      console.error("Failed to reset emailSent after send failure:", updateErr);
-    }
-  }
-
-  return NextResponse.json({
-    alreadyNotified: false,
-    itemName: item.name,
-    acknowledgementMessage: scanAcknowledgement || defaultAcknowledgements.sent,
-    emailFailed,
-  });
+  return Response.json(result, { status: result.created ? 201 : 200 });
 }

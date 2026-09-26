@@ -6,6 +6,7 @@ type SessionUserShape = {
   email: string;
   name?: string | null;
   tier: Tier;
+  sessionVersion: number;
 };
 
 export async function ensureCredentialsIdentity(userId: string) {
@@ -31,5 +32,6 @@ export function toSessionUser(user: SessionUserShape) {
     email: user.email,
     name: user.name,
     tier: user.tier,
+    sessionVersion: user.sessionVersion,
   };
 }

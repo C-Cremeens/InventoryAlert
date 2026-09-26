@@ -7,6 +7,7 @@ const REQUIRED = {
   NEXT_PUBLIC_BASE_URL: "https://example.com",
   RESEND_API_KEY: "re_test",
   RESEND_FROM_EMAIL: "alerts@example.com",
+  CRON_SECRET: "0123456789abcdef0123456789abcdef",
 };
 
 describe("validateEnv", () => {

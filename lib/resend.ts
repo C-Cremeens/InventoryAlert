@@ -1,19 +1,8 @@
 import { Resend } from "resend";
+let client: Resend | undefined;
+const getClient = () => (client ??= new Resend(process.env.RESEND_API_KEY));
 
-// Lazy singleton — instantiating at module scope makes `next build` fail
-// when RESEND_API_KEY is unset (e.g. in CI), since Resend throws without a key.
-let resendClient: Resend | null = null;
-
-function getResendClient(): Resend {
-  if (!resendClient) {
-    resendClient = new Resend(process.env.RESEND_API_KEY);
-  }
-  return resendClient;
-}
-
-// User-controlled values (e.g. item names) must be escaped before being
-// interpolated into email HTML — recipients may not be the account owner.
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -22,42 +11,51 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-  await getResendClient().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+export async function sendEmail(args: {
+  to: string;
+  subject: string;
+  html: string;
+  idempotencyKey?: string;
+}) {
+  const { data, error } = await getClient().emails.send(
+    {
+      from: process.env.RESEND_FROM_EMAIL!,
+      to: args.to,
+      subject: args.subject,
+      html: args.html,
+    },
+    args.idempotencyKey ? { idempotencyKey: args.idempotencyKey } : undefined,
+  );
+  if (error || !data?.id)
+    throw new Error(
+      `Email provider rejected request: ${error?.name ?? "missing_message_id"}`,
+    );
+  return data.id; // Accepted by provider, not a claim of inbox delivery.
+}
+
+export async function sendPasswordResetEmail(
+  to: string,
+  resetUrl: string,
+  verification = false,
+) {
+  return sendEmail({
     to,
-    subject: "Reset your InventoryAlert password",
-    html: `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2 style="color: #1d4ed8;">Reset Your Password</h2>
-        <p>We received a request to reset the password for your InventoryAlert account.</p>
-        <p>Click the button below to choose a new password. This link expires in <strong>1 hour</strong>.</p>
-        <a href="${resetUrl}" style="display: inline-block; margin: 16px 0; background: #2563eb; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;">Reset Password</a>
-        <p>If you didn't request a password reset, you can safely ignore this email.</p>
-        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #6b7280; font-size: 12px;">This email was sent automatically by InventoryAlert.</p>
-      </div>
-    `,
+    subject: verification
+      ? "Verify your InventoryAlert account"
+      : "Reset your InventoryAlert password",
+    html: `<h2>${verification ? "Verify your email and choose your password" : "Reset your password"}</h2><p>This link expires in one hour. Completing it signs out existing sessions.</p><p><a href="${escapeHtml(resetUrl)}">${verification ? "Verify account" : "Choose a new password"}</a></p><p>If you did not request this, ignore this email.</p>`,
   });
 }
 
-export async function sendAlertEmail(to: string | string[], itemName: string): Promise<void> {
-  const now = new Date().toLocaleString("en-US", { timeZone: "UTC" });
-  const safeItemName = escapeHtml(itemName);
-  await getResendClient().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+export async function sendAlertEmail(
+  to: string,
+  itemName: string,
+  idempotencyKey?: string,
+) {
+  return sendEmail({
     to,
-    // Subjects are rendered as plain text by mail clients — no escaping needed there.
+    idempotencyKey,
     subject: `Low Stock Alert: ${itemName}`,
-    html: `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2 style="color: #dc2626;">Low Stock Alert</h2>
-        <p>A low stock alert was triggered for <strong>${safeItemName}</strong>.</p>
-        <p>A QR code was scanned at <strong>${now} UTC</strong>, indicating that this item may need restocking.</p>
-        <p>Please log in to your InventoryAlert dashboard to review and action the stocking request.</p>
-        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #6b7280; font-size: 12px;">This alert was sent automatically by InventoryAlert.</p>
-      </div>
-    `,
+    html: `<h2>Low stock report</h2><p>A low-stock report was submitted for <strong>${escapeHtml(itemName)}</strong>.</p><p>Please review your InventoryAlert dashboard.</p>`,
   });
 }

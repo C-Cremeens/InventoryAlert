@@ -60,25 +60,31 @@ function dedupeEmails(emails: string[]): string[] {
 }
 
 export function getConfiguredRecipientEmails(
-  recipients: RecipientSnapshot[]
+  recipients: RecipientSnapshot[],
 ): string[] {
   return dedupeEmails(
     recipients.flatMap((recipient) => {
-      if (recipient.kind === RecipientKind.CONTACT && recipient.contact?.email) {
+      if (
+        recipient.kind === RecipientKind.CONTACT &&
+        recipient.contact?.email
+      ) {
         return [recipient.contact.email];
       }
 
-      if (recipient.kind === RecipientKind.INLINE_EMAIL && recipient.inlineEmail) {
+      if (
+        recipient.kind === RecipientKind.INLINE_EMAIL &&
+        recipient.inlineEmail
+      ) {
         return [recipient.inlineEmail];
       }
 
       return [];
-    })
+    }),
   );
 }
 
 export function getEffectiveRecipientEmails(
-  recipients: RecipientSnapshot[]
+  recipients: RecipientSnapshot[],
 ): string[] {
   return dedupeEmails(
     recipients.flatMap((recipient) => {
@@ -90,18 +96,21 @@ export function getEffectiveRecipientEmails(
         return [];
       }
 
-      if (recipient.kind === RecipientKind.INLINE_EMAIL && recipient.inlineEmail) {
+      if (
+        recipient.kind === RecipientKind.INLINE_EMAIL &&
+        recipient.inlineEmail
+      ) {
         return [recipient.inlineEmail];
       }
 
       return [];
-    })
+    }),
   );
 }
 
 export function getPrimaryRecipientEmail(
   recipients: RecipientSnapshot[],
-  fallbackEmail?: string | null
+  fallbackEmail?: string | null,
 ): string {
   const effectiveEmails = getEffectiveRecipientEmails(recipients);
   if (effectiveEmails.length > 0) return effectiveEmails[0];
@@ -154,11 +163,11 @@ export async function resolveRecipientWritePayload(args: {
       throw new RecipientConfigError(
         "Multiple alert recipients are a Pro feature.",
         403,
-        "PRO_FEATURE_REQUIRED"
+        "PRO_FEATURE_REQUIRED",
       );
     }
 
-    const alertEmail = cleanOptionalText(args.alertEmail);
+    const alertEmail = cleanOptionalText(args.alertEmail ?? fallbackAlertEmail);
     if (!alertEmail) {
       throw new RecipientConfigError("Alert email is required.");
     }
@@ -182,7 +191,12 @@ export async function resolveRecipientWritePayload(args: {
     args.alertRecipients && args.alertRecipients.length > 0
       ? args.alertRecipients
       : args.alertEmail
-        ? [{ kind: "INLINE_EMAIL", email: args.alertEmail } satisfies ItemAlertRecipientInput]
+        ? [
+            {
+              kind: "INLINE_EMAIL",
+              email: args.alertEmail,
+            } satisfies ItemAlertRecipientInput,
+          ]
         : [];
 
   if (requestedRecipients.length === 0) {
@@ -190,7 +204,7 @@ export async function resolveRecipientWritePayload(args: {
   }
 
   const contactIds = requestedRecipients.flatMap((recipient) =>
-    recipient.kind === "CONTACT" ? [recipient.contactId] : []
+    recipient.kind === "CONTACT" ? [recipient.contactId] : [],
   );
 
   const existingContacts =
@@ -212,23 +226,37 @@ export async function resolveRecipientWritePayload(args: {
         })
       : [];
 
-  const contactById = new Map(existingContacts.map((contact) => [contact.id, contact]));
+  const contactById = new Map(
+    existingContacts.map((contact) => [contact.id, contact]),
+  );
   if (contactById.size !== new Set(contactIds).size) {
-    throw new RecipientConfigError("One or more selected contacts no longer exist.", 404);
+    throw new RecipientConfigError(
+      "One or more selected contacts no longer exist.",
+      404,
+    );
   }
 
   const newContactInputs = requestedRecipients
-    .filter((recipient): recipient is Extract<ItemAlertRecipientInput, { kind: "NEW_CONTACT" }> => recipient.kind === "NEW_CONTACT")
-    .map((recipient) => normalizeContactInput({
-      name: recipient.name,
-      email: recipient.email,
-      cellPhone: recipient.cellPhone,
-      emailEnabled: recipient.emailEnabled,
-      smsOptIn: recipient.smsOptIn,
-    }));
+    .filter(
+      (
+        recipient,
+      ): recipient is Extract<
+        ItemAlertRecipientInput,
+        { kind: "NEW_CONTACT" }
+      > => recipient.kind === "NEW_CONTACT",
+    )
+    .map((recipient) =>
+      normalizeContactInput({
+        name: recipient.name,
+        email: recipient.email,
+        cellPhone: recipient.cellPhone,
+        emailEnabled: recipient.emailEnabled,
+        smsOptIn: recipient.smsOptIn,
+      }),
+    );
 
   const newContactEmailNormalized = Array.from(
-    new Set(newContactInputs.map((contact) => contact.emailNormalized))
+    new Set(newContactInputs.map((contact) => contact.emailNormalized)),
   );
 
   const existingByNormalized =
@@ -254,10 +282,13 @@ export async function resolveRecipientWritePayload(args: {
     [...existingContacts, ...existingByNormalized].map((contact) => [
       contact.emailNormalized,
       contact,
-    ])
+    ]),
   );
 
-  const createdContactByNormalized = new Map<string, ContactRecipientSnapshot>();
+  const createdContactByNormalized = new Map<
+    string,
+    ContactRecipientSnapshot
+  >();
   const recipients: ResolvedRecipientWrite["recipients"] = [];
   const configuredEmails: string[] = [];
   const effectiveEmails: string[] = [];
@@ -287,7 +318,10 @@ export async function resolveRecipientWritePayload(args: {
     if (requestedRecipient.kind === "CONTACT") {
       const existing = contactById.get(requestedRecipient.contactId);
       if (!existing) {
-        throw new RecipientConfigError("One or more selected contacts no longer exist.", 404);
+        throw new RecipientConfigError(
+          "One or more selected contacts no longer exist.",
+          404,
+        );
       }
 
       contact = {
@@ -312,7 +346,9 @@ export async function resolveRecipientWritePayload(args: {
           emailEnabled: existing.emailEnabled,
         };
       } else {
-        const cached = createdContactByNormalized.get(normalizedInput.emailNormalized);
+        const cached = createdContactByNormalized.get(
+          normalizedInput.emailNormalized,
+        );
         if (cached) {
           contact = cached;
         } else {
@@ -328,7 +364,10 @@ export async function resolveRecipientWritePayload(args: {
             },
           });
 
-          createdContactByNormalized.set(normalizedInput.emailNormalized, created);
+          createdContactByNormalized.set(
+            normalizedInput.emailNormalized,
+            created,
+          );
           contact = created;
         }
       }
@@ -355,7 +394,9 @@ export async function resolveRecipientWritePayload(args: {
     configuredEmails[0] ??
     cleanOptionalText(fallbackAlertEmail) ??
     (() => {
-      throw new RecipientConfigError("At least one alert recipient is required.");
+      throw new RecipientConfigError(
+        "At least one alert recipient is required.",
+      );
     })();
 
   return {
@@ -367,7 +408,7 @@ export async function resolveRecipientWritePayload(args: {
 
 export async function refreshItemAlertEmailMirrors(
   tx: Tx,
-  itemIds: string[]
+  itemIds: string[],
 ): Promise<void> {
   const uniqueItemIds = Array.from(new Set(itemIds.filter(Boolean)));
   if (uniqueItemIds.length === 0) return;
@@ -395,7 +436,10 @@ export async function refreshItemAlertEmailMirrors(
   });
 
   for (const item of items) {
-    const nextAlertEmail = getPrimaryRecipientEmail(item.alertRecipients, item.alertEmail);
+    const nextAlertEmail = getPrimaryRecipientEmail(
+      item.alertRecipients,
+      item.alertEmail,
+    );
     if (nextAlertEmail === item.alertEmail) continue;
 
     await tx.inventoryItem.update({

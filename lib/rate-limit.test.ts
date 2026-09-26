@@ -22,14 +22,20 @@ describe("checkRateLimit", () => {
 
   it("allows requests at or under the limit", async () => {
     upsert.mockResolvedValue({ count: 5 });
-    const result = await checkRateLimit("test:key", { limit: 5, windowSeconds: 60 });
+    const result = await checkRateLimit("test:key", {
+      limit: 5,
+      windowSeconds: 60,
+    });
     expect(result.allowed).toBe(true);
     expect(result.retryAfterSeconds).toBe(0);
   });
 
   it("blocks requests over the limit with a positive Retry-After", async () => {
     upsert.mockResolvedValue({ count: 6 });
-    const result = await checkRateLimit("test:key", { limit: 5, windowSeconds: 60 });
+    const result = await checkRateLimit("test:key", {
+      limit: 5,
+      windowSeconds: 60,
+    });
     expect(result.allowed).toBe(false);
     expect(result.retryAfterSeconds).toBeGreaterThan(0);
     expect(result.retryAfterSeconds).toBeLessThanOrEqual(60);
@@ -43,13 +49,29 @@ describe("checkRateLimit", () => {
     };
     expect(arg.where.key_windowStart.key).toBe("scan:item:abc");
     // Window start must be aligned to the window size
-    expect(arg.where.key_windowStart.windowStart.getTime() % (3600 * 1000)).toBe(0);
+    expect(
+      arg.where.key_windowStart.windowStart.getTime() % (3600 * 1000),
+    ).toBe(0);
+  });
+
+  it("fails closed for security-sensitive operations", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    upsert.mockRejectedValue(new Error("db down"));
+    expect(
+      await checkRateLimit("test:key", { limit: 5, windowSeconds: 60 }, true),
+    ).toEqual({ allowed: false, retryAfterSeconds: 60 });
+    log.mockRestore();
   });
 
   it("fails open when the database errors", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     upsert.mockRejectedValue(new Error("db down"));
-    const result = await checkRateLimit("test:key", { limit: 5, windowSeconds: 60 });
+    const result = await checkRateLimit("test:key", {
+      limit: 5,
+      windowSeconds: 60,
+    });
     expect(result.allowed).toBe(true);
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
@@ -84,7 +106,9 @@ describe("getClientIp", () => {
 
   it("falls back to x-real-ip, then 'unknown'", () => {
     expect(
-      getClientIp(new Request("http://x", { headers: { "x-real-ip": "198.51.100.2" } }))
+      getClientIp(
+        new Request("http://x", { headers: { "x-real-ip": "198.51.100.2" } }),
+      ),
     ).toBe("198.51.100.2");
     expect(getClientIp(new Request("http://x"))).toBe("unknown");
   });

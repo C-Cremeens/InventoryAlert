@@ -1,5 +1,6 @@
 "use client";
 
+import { safeReturnPath } from "@/lib/security";
 import { Suspense, useEffect, useState } from "react";
 import { getProviders, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -23,7 +24,7 @@ function Divider() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const callbackUrl = safeReturnPath(searchParams.get("callbackUrl"));
   const passwordReset = searchParams.get("reset") === "1";
   const registered = searchParams.get("registered") === "1";
   const registerHref =
@@ -94,7 +95,7 @@ function LoginForm() {
       if (result.code === GOOGLE_SIGNIN_REQUIRED_CODE) {
         setGoogleOnlyError(true);
         setError(
-          "This account uses Google sign-in. Continue with Google or use Forgot password to create a password."
+          "This account uses Google sign-in. Continue with Google or use Forgot password to create a password.",
         );
         return;
       }
@@ -108,6 +109,18 @@ function LoginForm() {
 
   return (
     <>
+      {searchParams.get("error") === "AccountRecoveryRequired" && (
+        <p
+          role="alert"
+          className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"
+        >
+          An existing account needs email verification. Use{" "}
+          <Link className="underline" href="/forgot-password">
+            Forgot password
+          </Link>{" "}
+          to verify your email and choose a new password, then try Google again.
+        </p>
+      )}
       {registered && (
         <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
           Account created. Sign in to continue.
@@ -123,7 +136,11 @@ function LoginForm() {
         {googleEnabled && (
           <>
             <GoogleSignInButton
-              label={googleLoading ? "Connecting to Google..." : "Continue with Google"}
+              label={
+                googleLoading
+                  ? "Connecting to Google..."
+                  : "Continue with Google"
+              }
               disabled={loading || googleLoading}
               onClick={handleGoogleSignIn}
             />
@@ -171,7 +188,10 @@ function LoginForm() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <div className="text-right mt-1">
-              <Link href={forgotPasswordHref} className="text-xs text-blue-600 hover:underline">
+              <Link
+                href={forgotPasswordHref}
+                className="text-xs text-blue-600 hover:underline"
+              >
                 Forgot password?
               </Link>
             </div>

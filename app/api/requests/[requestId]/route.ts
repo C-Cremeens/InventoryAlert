@@ -7,7 +7,12 @@ type Params = { params: Promise<{ requestId: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { requestId } = await params;
 
@@ -25,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0].message },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

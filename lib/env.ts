@@ -16,6 +16,7 @@ const requiredSchema = z.object({
   NEXT_PUBLIC_BASE_URL: z.string().url(),
   RESEND_API_KEY: z.string().min(1),
   RESEND_FROM_EMAIL: z.string().email(),
+  CRON_SECRET: z.string().min(32),
 });
 
 // Feature groups: either every var in the group is set, or none are.
@@ -47,7 +48,7 @@ export function validateEnv(): void {
     if (set.length > 0 && set.length < vars.length) {
       const missing = vars.filter((v) => !process.env[v]);
       problems.push(
-        `${group} is partially configured — missing: ${missing.join(", ")}`
+        `${group} is partially configured — missing: ${missing.join(", ")}`,
       );
     }
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import { safeReturnPath } from "@/lib/security";
 import { Suspense, useEffect, useState } from "react";
 import { getProviders, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,14 +10,17 @@ import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
 import { registerSchema } from "@/lib/auth-validation";
 
 type RegisterFieldErrors = Partial<
-  Record<"name" | "email" | "password" | "confirmPassword" | "termsAccepted", string>
+  Record<
+    "name" | "email" | "password" | "confirmPassword" | "termsAccepted",
+    string
+  >
 >;
 
 function mapFieldErrors(fieldErrors?: Record<string, string[] | undefined>) {
   return Object.fromEntries(
     Object.entries(fieldErrors ?? {})
       .map(([field, errors]) => [field, errors?.[0]])
-      .filter((entry): entry is [string, string] => Boolean(entry[1]))
+      .filter((entry): entry is [string, string] => Boolean(entry[1])),
   ) as RegisterFieldErrors;
 }
 
@@ -36,7 +40,7 @@ function Divider() {
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("callbackUrl") ?? "/dashboard";
+  const redirectTo = safeReturnPath(searchParams.get("callbackUrl"));
   const loginHref =
     redirectTo === "/dashboard"
       ? "/login"
@@ -140,7 +144,7 @@ function RegisterForm() {
         router.push(
           redirectTo === "/dashboard"
             ? "/login?registered=1"
-            : `/login?registered=1&callbackUrl=${encodeURIComponent(redirectTo)}`
+            : `/login?registered=1&callbackUrl=${encodeURIComponent(redirectTo)}`,
         );
         return;
       }
@@ -159,7 +163,11 @@ function RegisterForm() {
         {googleEnabled && (
           <>
             <GoogleSignInButton
-              label={googleLoading ? "Connecting to Google..." : "Continue with Google"}
+              label={
+                googleLoading
+                  ? "Connecting to Google..."
+                  : "Continue with Google"
+              }
               disabled={loading || googleLoading}
               onClick={handleGoogleSignIn}
             />
@@ -226,7 +234,9 @@ function RegisterForm() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {fieldErrors.password && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
+              <p className="mt-1 text-xs text-red-600">
+                {fieldErrors.password}
+              </p>
             )}
           </div>
 
@@ -266,11 +276,19 @@ function RegisterForm() {
             />
             <label htmlFor="terms" className="text-sm text-gray-600 leading-5">
               I agree to the{" "}
-              <Link href="/terms" target="_blank" className="text-blue-600 hover:underline">
+              <Link
+                href="/terms"
+                target="_blank"
+                className="text-blue-600 hover:underline"
+              >
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" target="_blank" className="text-blue-600 hover:underline">
+              <Link
+                href="/privacy"
+                target="_blank"
+                className="text-blue-600 hover:underline"
+              >
                 Privacy Policy
               </Link>
             </label>

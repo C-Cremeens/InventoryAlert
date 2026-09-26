@@ -1,3 +1,4 @@
+import { canLinkGoogle } from "@/lib/security";
 import NextAuth from "next-auth";
 import { AuthProvider, type Tier } from "@prisma/client";
 import { CredentialsSignin } from "next-auth";
@@ -6,7 +7,10 @@ import Google, { type GoogleProfile } from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { GoogleSignInRequiredError } from "@/lib/auth-errors";
-import { ensureCredentialsIdentity, toSessionUser } from "@/lib/auth-identities";
+import {
+  ensureCredentialsIdentity,
+  toSessionUser,
+} from "@/lib/auth-identities";
 import { normalizeEmail } from "@/lib/auth-validation";
 import { RATE_LIMITS, checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -17,6 +21,9 @@ declare module "next-auth" {
       email: string;
       name?: string | null;
       tier: Tier;
+      emailVerifiedAt: string | null;
+      termsAcceptedAt: string | null;
+      sessionVersion: number;
     };
   }
   interface User {
@@ -24,6 +31,7 @@ declare module "next-auth" {
     email: string;
     name?: string | null;
     tier: Tier;
+    sessionVersion: number;
   }
   interface JWT {
     id: string;
@@ -61,7 +69,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // credential failure so attackers learn nothing from the response.
         const limit = await checkRateLimit(
           `login:${getClientIp(request)}:${email}`,
-          RATE_LIMITS.loginPerIpEmail
+          RATE_LIMITS.loginPerIpEmail,
+          true,
         );
         if (!limit.allowed) {
           console.warn(`Login rate limit hit for ${email}`);
@@ -96,7 +105,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const valid = await bcrypt.compare(
           credentials.password as string,
-          user.hashedPassword
+          user.hashedPassword,
         );
         if (!valid) return null;
 
@@ -151,6 +160,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
 
         if (matchingUser) {
+          // Never preserve a password set by an unverified pre-registrant.
+          // Mailbox recovery replaces that password and revokes old sessions.
+          if (!canLinkGoogle(matchingUser.emailVerifiedAt)) {
+            return "/login?error=AccountRecoveryRequired";
+          }
           linkedUser = await prisma.user.update({
             where: { id: matchingUser.id },
             data: {
@@ -190,19 +204,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       user.email = linkedUser.email;
       user.name = linkedUser.name;
       user.tier = linkedUser.tier;
+      user.sessionVersion = linkedUser.sessionVersion;
 
       return true;
     },
     async jwt({ token, user }) {
       if (user) {
-        token["id"] = user.id;
-        token["tier"] = user.tier;
-        token.email = user.email;
-        token.name = user.name;
+        token.id = user.id;
+        token.sessionVersion = user.sessionVersion;
       }
+      if (
+        typeof token.id !== "string" ||
+        typeof token.sessionVersion !== "number"
+      )
+        return null;
+      const current = await prisma.user.findUnique({ where: { id: token.id } });
+      if (!current || current.sessionVersion !== token.sessionVersion)
+        return null;
+      token.tier = current.tier;
+      token.email = current.email;
+      token.name = current.name;
+      token.emailVerifiedAt = current.emailVerifiedAt?.toISOString() ?? null;
+      token.termsAcceptedAt = current.termsAcceptedAt?.toISOString() ?? null;
       return token;
     },
     async session({ session, token }) {
+      session.user.emailVerifiedAt = token.emailVerifiedAt as string | null;
+      session.user.termsAcceptedAt = token.termsAcceptedAt as string | null;
+      session.user.sessionVersion = token.sessionVersion as number;
       session.user.id = token["id"] as string;
       session.user.tier = token["tier"] as Tier;
       session.user.email = token.email as string;

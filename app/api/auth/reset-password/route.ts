@@ -16,12 +16,13 @@ export async function POST(req: NextRequest) {
     // Caps brute-force guessing of reset tokens.
     const limit = await checkRateLimit(
       `reset-password:ip:${getClientIp(req)}`,
-      RATE_LIMITS.resetPasswordPerIp
+      RATE_LIMITS.resetPasswordPerIp,
+      true,
     );
     if (!limit.allowed) {
       return rateLimitResponse(
         limit.retryAfterSeconds,
-        "Too many attempts. Please try again later."
+        "Too many attempts. Please try again later.",
       );
     }
 
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
           error: parsed.error.issues[0].message,
           fieldErrors,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -51,19 +52,31 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: "Invalid or expired reset link." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    await prisma.user.update({
-      where: { id: user.id },
+    const consumed = await prisma.user.updateMany({
+      where: {
+        id: user.id,
+        passwordResetToken: tokenHash,
+        passwordResetExpiry: { gt: new Date() },
+      },
       data: {
         hashedPassword,
+        emailVerifiedAt: new Date(),
+        sessionVersion: { increment: 1 },
         passwordResetToken: null,
         passwordResetExpiry: null,
       },
     });
+    if (consumed.count !== 1) {
+      return NextResponse.json(
+        { error: "Invalid or expired reset link." },
+        { status: 400 },
+      );
+    }
     await ensureCredentialsIdentity(user.id);
 
     return NextResponse.json({ ok: true });

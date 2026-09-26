@@ -7,21 +7,27 @@ import { fetchStripePrices } from "@/lib/stripe";
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session) return null;
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return null;
 
-  const [itemCount, pendingRequests, recentRequests, stripePrices] = await Promise.all([
-    prisma.inventoryItem.count({ where: { userId: session.user.id } }),
-    prisma.stockingRequest.count({
-      where: { item: { userId: session.user.id }, status: "PENDING" },
-    }),
-    prisma.stockingRequest.findMany({
-      where: { item: { userId: session.user.id } },
-      include: { item: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
-    fetchStripePrices(),
-  ]);
+  const [itemCount, pendingRequests, recentRequests, stripePrices] =
+    await Promise.all([
+      prisma.inventoryItem.count({ where: { userId: session.user.id } }),
+      prisma.stockingRequest.count({
+        where: { item: { userId: session.user.id }, status: "PENDING" },
+      }),
+      prisma.stockingRequest.findMany({
+        where: { item: { userId: session.user.id } },
+        include: { item: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+      fetchStripePrices(),
+    ]);
 
   const tier = session.user.tier;
   const limit = TIER_LIMITS[tier];
@@ -31,7 +37,9 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-on-surface font-headline">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-on-surface font-headline">
+          Dashboard
+        </h1>
         <TierBadge tier={tier} />
       </div>
 
@@ -85,7 +93,9 @@ export default async function DashboardPage() {
                 <li key={r.id} className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-sm text-on-surface truncate">{r.item.name}</p>
+                      <p className="font-medium text-sm text-on-surface truncate">
+                        {r.item.name}
+                      </p>
                       <p className="text-xs text-on-surface-variant mt-1">
                         {new Date(r.createdAt).toLocaleString()}
                       </p>
@@ -96,33 +106,39 @@ export default async function DashboardPage() {
               ))}
             </ul>
             <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-outline-variant bg-surface-container text-left">
-                  <th className="px-4 py-3 font-medium text-on-surface-variant">Item</th>
-                  <th className="px-4 py-3 font-medium text-on-surface-variant">When</th>
-                  <th className="px-4 py-3 font-medium text-on-surface-variant">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentRequests.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="border-b border-outline-variant last:border-0"
-                  >
-                    <td className="px-4 py-3 font-medium text-on-surface">
-                      {r.item.name}
-                    </td>
-                    <td className="px-4 py-3 text-on-surface-variant">
-                      {new Date(r.createdAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={r.status} />
-                    </td>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-outline-variant bg-surface-container text-left">
+                    <th className="px-4 py-3 font-medium text-on-surface-variant">
+                      Item
+                    </th>
+                    <th className="px-4 py-3 font-medium text-on-surface-variant">
+                      When
+                    </th>
+                    <th className="px-4 py-3 font-medium text-on-surface-variant">
+                      Status
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recentRequests.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="border-b border-outline-variant last:border-0"
+                    >
+                      <td className="px-4 py-3 font-medium text-on-surface">
+                        {r.item.name}
+                      </td>
+                      <td className="px-4 py-3 text-on-surface-variant">
+                        {new Date(r.createdAt).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={r.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -171,7 +187,9 @@ function StatCard({
       className="bg-surface-container-lowest rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow"
     >
       <p className="text-sm text-on-surface-variant mb-1">{label}</p>
-      <p className="text-2xl text-on-surface font-headline font-bold">{value}</p>
+      <p className="text-2xl text-on-surface font-headline font-bold">
+        {value}
+      </p>
       {sub && <p className="text-xs text-on-surface-variant mt-1">{sub}</p>}
     </Link>
   );
