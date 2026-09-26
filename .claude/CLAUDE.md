@@ -340,3 +340,5 @@ Run `npm run test:db`, lint, typecheck, production audit and build. CI uses Post
 The earlier-dated pricing bridge is intentional and does not edit historical checksums.
 See the runbook before applying migrations or promoting dev to main. Hosted monitoring,
 production backup/restore and real-device/provider checks remain release gates.
+
+Scheduling: vercel.json includes daily maintenance only. Enable and verify the optional notification-worker GitHub workflow or configure Vercel Pro/external scheduling before launch; it is disabled by default.

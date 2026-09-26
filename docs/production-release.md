@@ -44,7 +44,7 @@ Rollback: prefer a forward fix. New tables/columns are additive, but reverting t
 
 - Required environment: database, a fresh 32+ character auth secret, HTTPS `NEXT_PUBLIC_BASE_URL`, Resend credentials/from address, and a fresh 32+ character `CRON_SECRET`. Stripe/Google/push groups must be complete when enabled. Avoid different base URLs for labels and checkout.
 - Set `BLOB_PUBLIC_HOSTNAME` to the exact existing public Blob store hostname to adopt legitimate pre-migration owner-path uploads. New uploads are tracked automatically. Never use an arbitrary customer's URL to delete an image. Existing images that cannot be verified stay displayed but cannot be reassigned/deleted through the cleanup helper until inspected.
-- Enable the notification worker every five minutes and image/rate-limit maintenance daily. `vercel.json` supplies schedules; verify the hosting plan supports them. An external scheduler may call the same endpoints with `Authorization: Bearer <CRON_SECRET>`. Do not expose this secret in client code. Vercel Cron runs on production, so test the authenticated endpoints manually in an isolated preview. Verify retry backlog drains after stopping/restarting a worker.
+- Enable the notification worker every five minutes and image/rate-limit maintenance daily. `vercel.json` supplies only the daily maintenance schedule so previews remain compatible with Hobby limits. The five-minute retry worker requires an external scheduler (the disabled-by-default GitHub workflow is included) or Vercel Pro. An external scheduler may call the same endpoints with `Authorization: Bearer <CRON_SECRET>`. Do not expose this secret in client code. Vercel Cron runs on production, so test the authenticated endpoints manually in an isolated preview. Verify retry backlog drains after stopping/restarting a worker.
 - Stripe live keys, expected price/product and webhook secret; subscribe to checkout completion/async payment success/failure, subscription created/updated/deleted, invoice paid/payment failed. Billing portal and terms URLs must be configured in Stripe. Legacy Stripe customers must have `User.stripeCustomerId` mapped; unknown customer events fail for investigation rather than silently disappearing.
 - Resend sender domain DNS and deliverability; recipient confirmation and password recovery emails must work. Confirm the recorded provider ID exists. Test rejection and bouncing with provider-supported test addresses.
 - Production VAPID keys and subject; real iPhone PWA and Android notification permission tests, including revoking permission and switching accounts on a shared phone.
@@ -82,3 +82,20 @@ No account deletion, billing changes or customer data export has been performed 
 - Confirm support contact, account export/deletion procedure and backup restore.
 
 Organization membership/roles, additional OAuth providers and third-party shopping carts remain separate product work; this release keeps inventory owned by one account.
+
+
+### Five-minute worker without a Vercel plan change
+
+`.github/workflows/notification-worker.yml` is disabled until repository variable
+`INVALERT_WORKER_ENABLED` is set to `true`. Before enabling it on the default branch,
+set repository secrets `INVALERT_BASE_URL` (the HTTPS production origin) and
+`INVALERT_CRON_SECRET` (matching the app's `CRON_SECRET`). A manual run is available
+for controlled verification. GitHub scheduled runs can be delayed; monitor job age
+and use a scheduler with a stronger delivery guarantee if the pilot requires one.
+For Vercel Pro, instead add the five-minute notifications entry from
+`docs/vercel-pro-cron.example.json` to the deployment configuration. Do not run two
+schedulers deliberately; database leases protect accidental overlap.
+
+The initial PR preview rejected a five-minute Vercel cron due to the current plan's
+frequency limit. The app does not require upgrading the hosting plan to build/deploy.
+Reliable automated retries remain a launch gate until one scheduler is verified.

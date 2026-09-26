@@ -1,0 +1,26 @@
+name: Notification retry worker
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: inventoryalert-notification-worker
+  cancel-in-progress: false
+jobs:
+  drain:
+    if: vars.INVALERT_WORKER_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Drain persisted notification jobs
+        env:
+          INVALERT_BASE_URL: ${{ secrets.INVALERT_BASE_URL }}
+          INVALERT_CRON_SECRET: ${{ secrets.INVALERT_CRON_SECRET }}
+        run: |
+          test -n "$INVALERT_BASE_URL"
+          test "${#INVALERT_CRON_SECRET}" -ge 32
+          case "$INVALERT_BASE_URL" in https://*) ;; *) exit 1 ;; esac
+          curl --fail --silent --show-error --max-time 55 \
+            --header "Authorization: Bearer $INVALERT_CRON_SECRET" \
+            "${INVALERT_BASE_URL%/}/api/jobs/notifications"
