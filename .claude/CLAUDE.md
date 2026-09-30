@@ -126,6 +126,13 @@
 ├── public/
 │   ├── manifest.json             # PWA manifest (required for iOS web push)
 │   └── sw.js                     # Service worker: handles push events + notification clicks
+├── .github/workflows/
+│   ├── ci.yml                    # Lint, typecheck, audit, migrations, tests, build on dev/uat/main
+│   ├── promotion-guard.yml       # Enforces dev → uat → main promotion paths
+│   └── notification-worker.yml   # Optional scheduled notification retry worker
+├── docs/
+│   ├── production-release.md     # Release runbook
+│   └── branching-and-promotion.md
 ├── .claude/
 │   └── CLAUDE.md                 # ← This file
 ├── .mcp.json.example             # MCP server config template
@@ -144,17 +151,18 @@
 
 ```
 feature/* ──┐
-            ├──▶  dev  ──▶  main
-fix/*   ────┘
+            ├──▶  dev  ──▶  uat  ──▶  main
+fix/*   ────┘      └─ release/* ─┘      ▲
+                            hotfix/* ───┘ (then back-merge main → uat, dev)
 ```
 
-- **`main`** — production-ready code only; protected branch
+- **`main`** — production; only `uat` or `hotfix/*` may merge in
+- **`uat`** — user acceptance testing; only `dev`, `release/*` (cut from `dev`) or `main` (hotfix back-merge) may merge in
 - **`dev`** — integration branch; all features merge here first
-- **`feature/<short-description>`** — one feature/fix per branch
-- **`fix/<short-description>`** — dedicated hotfix/bugfix branches
+- **`feature/<short-description>`**, **`fix/<short-description>`** — one feature/fix per branch
 - **Agent branches** follow the pattern `<agent>/<task-slug>-<id>` (e.g. `claude/add-search-8xKj2`)
 
-PRs must target `dev`, not `main`, unless it is a hotfix.
+PRs must target `dev`. `.github/workflows/promotion-guard.yml` enforces the promotion paths; use merge commits (not squash) for promotion PRs. Full rules and the manual branch-protection settings: `docs/branching-and-promotion.md`.
 
 ---
 
