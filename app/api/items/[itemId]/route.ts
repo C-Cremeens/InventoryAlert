@@ -136,7 +136,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const updated = await prisma.$transaction(async (tx) => {
       await lockUser(tx, session.user.id);
-      await requireOwnedImage(tx, rest.imageUrl, session.user.id);
+      // Only a newly assigned image needs an ownership check. Legacy images kept on
+      // an item may predate StoredImage records.
+      if (rest.imageUrl !== existing.imageUrl)
+        await requireOwnedImage(tx, rest.imageUrl, session.user.id);
       let primaryAlertEmail = existing.alertEmail;
 
       if (shouldReplaceRecipients) {

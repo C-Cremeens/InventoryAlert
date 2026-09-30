@@ -337,6 +337,23 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       ).toBe(404);
       expect(del).not.toHaveBeenCalled();
     });
+    it("keeps an unchanged legacy image without an ownership record when editing", async () => {
+      const url = `https://store.public.blob.vercel-storage.com/items/${uid}/legacy.webp`;
+      const i = await item();
+      await prisma.inventoryItem.update({
+        where: { id: i.id },
+        data: { imageUrl: url },
+      });
+      const response = await patchItem(
+        request({ name: "Changed", imageUrl: url }, "PATCH"),
+        params(i.id),
+      );
+      expect(response.status).toBe(200);
+      expect(
+        (await prisma.inventoryItem.findUnique({ where: { id: i.id } }))?.name,
+      ).toBe("Changed");
+      expect(del).not.toHaveBeenCalled();
+    });
     it("does not delete a shared owned image until its last reference is removed", async () => {
       const url = `https://store.public.blob.vercel-storage.com/items/${uid}/photo.webp`;
       await prisma.storedImage.create({ data: { url, userId: uid } });
@@ -459,6 +476,24 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       expect(
         stripe.checkout.sessions.create.mock.calls[0][1].idempotencyKey,
       ).toBe(stripe.checkout.sessions.create.mock.calls[1][1].idempotencyKey);
+    });
+    it("replaces a checkout attempt too close to expiry for Stripe", async () => {
+      await prisma.user.update({
+        where: { id: uid },
+        data: {
+          stripeCustomerId: `cus_${prefix}`,
+          checkoutAttemptId: "stale-attempt",
+          checkoutAttemptExpires: new Date(Date.now() + 20 * 60_000),
+        },
+      });
+      await startCheckout(uid);
+      const [params, options] = stripe.checkout.sessions.create.mock.calls[0];
+      expect(options.idempotencyKey).not.toBe(
+        "inventory-checkout/stale-attempt",
+      );
+      expect(params.expires_at * 1000).toBeGreaterThan(
+        Date.now() + 30 * 60_000,
+      );
     });
     it("routes an existing subscriber to the billing portal", async () => {
       stripe.subscriptions.list.mockResolvedValue({
