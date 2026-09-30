@@ -23,6 +23,8 @@ export function subscriptionTier(subscription: Stripe.Subscription): Tier {
     : "FREE";
 }
 
+const CHECKOUT_REUSE_MIN_REMAINING_MS = 35 * 60_000;
+
 export async function startCheckout(userId: string) {
   const stripe = getStripeClient();
   const baseUrl = appBaseUrl();
@@ -55,10 +57,13 @@ export async function startCheckout(userId: string) {
         )
       )
         return { customer, existing: true as const };
+      // Stripe requires expires_at at least 30 minutes out, so an attempt close to
+      // expiry is replaced rather than reused.
       const reuse =
         user.checkoutAttemptId &&
         user.checkoutAttemptExpires &&
-        user.checkoutAttemptExpires.getTime() > Date.now();
+        user.checkoutAttemptExpires.getTime() >
+          Date.now() + CHECKOUT_REUSE_MIN_REMAINING_MS;
       const attemptId = reuse ? user.checkoutAttemptId! : crypto.randomUUID();
       const expires = reuse
         ? user.checkoutAttemptExpires!

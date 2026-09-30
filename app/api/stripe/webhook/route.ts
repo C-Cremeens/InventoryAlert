@@ -18,7 +18,8 @@ export async function POST(req: Request) {
   try {
     await applyStripeEvent(event);
   } catch (error) {
-    reportError("Stripe reconciliation failed", { eventId: event.id, error });
+    console.error("Stripe reconciliation failed for event", event.id);
+    reportError("Stripe reconciliation failed", error);
     return Response.json({ error: "Handler error." }, { status: 500 });
   }
   return Response.json({ received: true });
