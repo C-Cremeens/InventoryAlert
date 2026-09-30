@@ -12,13 +12,19 @@ function parseLabelLayout(raw: unknown): LabelLayout | null {
   const validSizes: LabelSize[] = ["3x1", "2x1", "1x1"];
   const validPositions: QrPosition[] = ["left", "center", "right"];
   if (
-    typeof r.size !== "string" || !validSizes.includes(r.size as LabelSize) ||
-    typeof r.qrPosition !== "string" || !validPositions.includes(r.qrPosition as QrPosition) ||
+    typeof r.size !== "string" ||
+    !validSizes.includes(r.size as LabelSize) ||
+    typeof r.qrPosition !== "string" ||
+    !validPositions.includes(r.qrPosition as QrPosition) ||
     !Array.isArray(r.elements)
   ) {
     return null;
   }
-  return { size: r.size as LabelSize, qrPosition: r.qrPosition as QrPosition, elements: r.elements };
+  return {
+    size: r.size as LabelSize,
+    qrPosition: r.qrPosition as QrPosition,
+    elements: r.elements,
+  };
 }
 
 export default async function EditItemPage({
@@ -27,7 +33,12 @@ export default async function EditItemPage({
   params: Promise<{ itemId: string }>;
 }) {
   const session = await auth();
-  if (!session) return null;
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return null;
 
   const { itemId } = await params;
   const [item, contacts] = await Promise.all([
@@ -72,14 +83,19 @@ export default async function EditItemPage({
   if (!item || item.userId !== session.user.id) notFound();
 
   const canCustomizeLabels = TIER_LIMITS[session.user.tier].customLabels;
-  const savedLayout = parseLabelLayout(item.labelLayout);
+  const savedLayout = canCustomizeLabels
+    ? parseLabelLayout(item.labelLayout)
+    : null;
   const hasLockedProRecipients =
     session.user.tier !== "PRO" &&
-    (item.alertRecipients.length !== 1 || item.alertRecipients[0]?.kind !== "INLINE_EMAIL");
+    (item.alertRecipients.length !== 1 ||
+      item.alertRecipients[0]?.kind !== "INLINE_EMAIL");
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">Edit Item</h1>
+      <h1 className="text-2xl font-bold text-on-surface font-headline mb-6">
+        Edit Item
+      </h1>
 
       <LabelSection
         itemId={item.id}

@@ -20,23 +20,34 @@ function normalizeOptionalName(value: unknown) {
 
 export const passwordSchema = z
   .string()
+  .max(72, "Password must be at most 72 characters.")
+  .refine(
+    (value) => new TextEncoder().encode(value).length <= 72,
+    "Password must be at most 72 bytes.",
+  )
   .min(
     PASSWORD_MIN_LENGTH,
-    `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`
+    `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`,
   )
-  .regex(LOWERCASE_REGEX, "Password must include at least one lowercase letter.")
-  .regex(UPPERCASE_REGEX, "Password must include at least one uppercase letter.")
+  .regex(
+    LOWERCASE_REGEX,
+    "Password must include at least one lowercase letter.",
+  )
+  .regex(
+    UPPERCASE_REGEX,
+    "Password must include at least one uppercase letter.",
+  )
   .regex(NUMBER_REGEX, "Password must include at least one number.")
   .regex(
     SPECIAL_CHARACTER_REGEX,
-    "Password must include at least one special character."
+    "Password must include at least one special character.",
   );
 
 export const registerSchema = z
   .object({
     name: z.preprocess(
       normalizeOptionalName,
-      z.string().max(100, "Name must be 100 characters or fewer.").optional()
+      z.string().max(100, "Name must be 100 characters or fewer.").optional(),
     ),
     email: z
       .string()
@@ -45,11 +56,9 @@ export const registerSchema = z
       .email("Enter a valid email address."),
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Please confirm your password."),
-    termsAccepted: z
-      .boolean()
-      .refine((value) => value, {
-        message: "You must accept the Terms of Service to create an account.",
-      }),
+    termsAccepted: z.boolean().refine((value) => value, {
+      message: "You must accept the Terms of Service to create an account.",
+    }),
   })
   .superRefine(({ password, confirmPassword }, ctx) => {
     if (password !== confirmPassword) {

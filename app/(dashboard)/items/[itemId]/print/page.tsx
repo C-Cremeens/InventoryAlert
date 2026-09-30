@@ -10,7 +10,12 @@ export default async function PrintPage({
   params: Promise<{ itemId: string }>;
 }) {
   const session = await auth();
-  if (!session) return null;
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return null;
 
   const { itemId } = await params;
   const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });

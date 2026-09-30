@@ -11,7 +11,12 @@ export default async function ItemsPage({
   searchParams: Promise<{ search?: string }>;
 }) {
   const session = await auth();
-  if (!session) return null;
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return null;
 
   const { search: searchParam } = await searchParams;
   const search = searchParam?.trim().slice(0, 100) || undefined;
@@ -38,7 +43,9 @@ export default async function ItemsPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface font-headline">Inventory</h1>
+          <h1 className="text-2xl font-bold text-on-surface font-headline">
+            Inventory
+          </h1>
           {limit.maxItems !== Infinity && (
             <p className="text-sm text-on-surface-variant mt-0.5">
               {count} / {limit.maxItems} items used

@@ -5,13 +5,20 @@ import ContactsClient from "./ContactsClient";
 
 export default async function ContactsPage() {
   const session = await auth();
-  if (!session) return null;
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return null;
 
   if (session.user.tier !== "PRO") {
     return (
       <div className="max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface font-headline">Contacts</h1>
+          <h1 className="text-2xl font-bold text-on-surface font-headline">
+            Contacts
+          </h1>
           <p className="text-sm text-on-surface-variant mt-1">
             Reusable alert contacts are available on the Pro plan.
           </p>
@@ -22,8 +29,9 @@ export default async function ContactsPage() {
             Upgrade to Pro to manage shared alert recipients.
           </p>
           <p className="text-sm text-on-surface-variant">
-            Pro contacts let you reuse recipients across items, mute email delivery per contact,
-            and store cell phone numbers for future SMS support.
+            Pro contacts let you reuse recipients across items, mute email
+            delivery per contact, and store cell phone numbers for future SMS
+            support.
           </p>
           <Link
             href="/settings"
@@ -59,7 +67,9 @@ export default async function ContactsPage() {
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-on-surface font-headline">Contacts</h1>
+        <h1 className="text-2xl font-bold text-on-surface font-headline">
+          Contacts
+        </h1>
         <p className="text-sm text-on-surface-variant mt-1">
           Manage shared notification recipients for your Pro inventory alerts.
         </p>

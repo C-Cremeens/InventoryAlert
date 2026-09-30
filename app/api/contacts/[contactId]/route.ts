@@ -15,12 +15,17 @@ type Params = { params: Promise<{ contactId: string }> };
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (
+      !session?.user?.id ||
+      !session.user.emailVerifiedAt ||
+      !session.user.termsAcceptedAt
+    )
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     if (!isProTier(session.user.tier)) {
       return NextResponse.json(
         { error: "Contacts are a Pro feature.", code: "PRO_FEATURE_REQUIRED" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -47,7 +52,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -65,9 +70,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         email: normalized.email,
         emailNormalized: normalized.emailNormalized,
       }),
-      ...(parsed.data.cellPhone !== undefined && { cellPhone: normalized.cellPhone }),
-      ...(parsed.data.emailEnabled !== undefined && { emailEnabled: normalized.emailEnabled }),
-      ...(parsed.data.smsOptIn !== undefined && { smsOptIn: normalized.smsOptIn }),
+      ...(parsed.data.cellPhone !== undefined && {
+        cellPhone: normalized.cellPhone,
+      }),
+      ...(parsed.data.emailEnabled !== undefined && {
+        emailEnabled: normalized.emailEnabled,
+      }),
+      ...(parsed.data.smsOptIn !== undefined && {
+        smsOptIn: normalized.smsOptIn,
+      }),
     };
 
     const updated = await prisma.$transaction(async (tx) => {
@@ -88,7 +99,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
       await refreshItemAlertEmailMirrors(
         tx,
-        existing.itemRecipients.map((recipient) => recipient.itemId)
+        existing.itemRecipients.map((recipient) => recipient.itemId),
       );
 
       return contact;
@@ -102,24 +113,32 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     ) {
       return NextResponse.json(
         { error: "A contact with this email already exists." },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     console.error("[PATCH /api/contacts/[contactId]]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (
+      !session?.user?.id ||
+      !session.user.emailVerifiedAt ||
+      !session.user.termsAcceptedAt
+    )
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     if (!isProTier(session.user.tier)) {
       return NextResponse.json(
         { error: "Contacts are a Pro feature.", code: "PRO_FEATURE_REQUIRED" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -141,7 +160,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const impactedItemIds = existing.itemRecipients.map((recipient) => recipient.itemId);
+    const impactedItemIds = existing.itemRecipients.map(
+      (recipient) => recipient.itemId,
+    );
     const impactedItems = impactedItemIds.length
       ? await prisma.inventoryItem.findMany({
           where: {
@@ -172,7 +193,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
     const blockingItems = impactedItems.filter((item) => {
       const remainingRecipients = item.alertRecipients.filter(
-        (recipient) => recipient.contact?.id !== contactId
+        (recipient) => recipient.contact?.id !== contactId,
       );
       return getEffectiveRecipientEmails(remainingRecipients).length === 0;
     });
@@ -185,7 +206,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
               ? `Cannot delete this contact because "${blockingItems[0].name}" would have no remaining recipients.`
               : `Cannot delete this contact because ${blockingItems.length} items would have no remaining recipients.`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -200,6 +221,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[DELETE /api/contacts/[contactId]]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

@@ -1,8 +1,8 @@
+import { reportError } from "@/lib/monitoring";
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
+import { sendAccountRecovery } from "@/lib/account-recovery";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { sendPasswordResetEmail } from "@/lib/resend";
 import { normalizeEmail } from "@/lib/auth-validation";
 import {
   RATE_LIMITS,
@@ -19,12 +19,13 @@ export async function POST(req: NextRequest) {
   try {
     const ipLimit = await checkRateLimit(
       `forgot-password:ip:${getClientIp(req)}`,
-      RATE_LIMITS.forgotPasswordPerIp
+      RATE_LIMITS.forgotPasswordPerIp,
+      true,
     );
     if (!ipLimit.allowed) {
       return rateLimitResponse(
         ipLimit.retryAfterSeconds,
-        "Too many password reset requests. Please try again later."
+        "Too many password reset requests. Please try again later.",
       );
     }
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -43,7 +44,8 @@ export async function POST(req: NextRequest) {
     // can't bombard one inbox with reset emails.
     const emailLimit = await checkRateLimit(
       `forgot-password:email:${normalizedEmail}`,
-      RATE_LIMITS.forgotPasswordPerEmail
+      RATE_LIMITS.forgotPasswordPerEmail,
+      true,
     );
     if (!emailLimit.allowed) {
       // Same body as the success path — a distinct error here would allow
@@ -60,21 +62,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (user) {
-      const rawToken = crypto.randomBytes(32).toString("hex");
-      const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-      const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { passwordResetToken: tokenHash, passwordResetExpiry: expiry },
-      });
-
-      const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${rawToken}`;
       try {
-        await sendPasswordResetEmail(user.email, resetUrl);
-      } catch {
-        // Log but don't expose email delivery failures
-        console.error("Failed to send password reset email to", user.email);
+        await sendAccountRecovery(user);
+      } catch (error) {
+        reportError("Account recovery delivery failed", error);
       }
     }
 

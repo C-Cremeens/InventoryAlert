@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { RequestStatus } from "@prisma/client";
 
@@ -13,11 +13,14 @@ interface Request {
   emailSent: boolean;
   createdAt: Date | string;
   item: { name: string; id: string };
+  notifications: Array<{ kind: string; status: string }>;
 }
 
 interface Props {
   initialRequests: Request[];
   activeStatus: RequestStatus | null;
+  page: number;
+  initialHasMore: boolean;
 }
 
 const TABS: { label: string; value: RequestStatus | null }[] = [
@@ -33,15 +36,25 @@ const statusStyles: Record<RequestStatus, string> = {
   DECLINED: "bg-error-container text-on-error-container",
 };
 
-export default function RequestsClient({ initialRequests, activeStatus }: Props) {
+export default function RequestsClient({
+  initialRequests,
+  activeStatus,
+  page,
+  initialHasMore,
+}: Props) {
   const router = useRouter();
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [error, setError] = useState("");
   const [requests, setRequests] = useState(initialRequests);
   const [loading, setLoading] = useState<string | null>(null);
-  const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "offline">("connecting");
+  const [liveStatus, setLiveStatus] = useState<
+    "connecting" | "live" | "offline"
+  >("connecting");
 
   // Sync local state when the server sends new filtered data after navigation
   // (state adjustment during render — https://react.dev/learn/you-might-not-need-an-effect)
-  const [prevInitialRequests, setPrevInitialRequests] = useState(initialRequests);
+  const [prevInitialRequests, setPrevInitialRequests] =
+    useState(initialRequests);
   if (prevInitialRequests !== initialRequests) {
     setPrevInitialRequests(initialRequests);
     setRequests(initialRequests);
@@ -60,7 +73,6 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
   // Poll for new requests. Serverless-friendly replacement for the previous
   // SSE stream, whose in-memory pub/sub never delivered events across
   // serverless function instances. Web push (sw.js) remains the instant channel.
-  const seenIdsRef = useRef<Set<string>>(new Set(initialRequests.map((r) => r.id)));
 
   useEffect(() => {
     let cancelled = false;
@@ -68,32 +80,18 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
     async function poll() {
       try {
         const url = activeStatus
-          ? `/api/requests?status=${activeStatus}`
-          : "/api/requests";
+          ? `/api/requests?status=${activeStatus}&page=${page}`
+          : `/api/requests?page=${page}`;
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error(`Poll failed: ${res.status}`);
-        const data = (await res.json()) as Request[];
+        const data = (await res.json()) as {
+          requests: Request[];
+          hasMore: boolean;
+        };
         if (cancelled) return;
-
-        const fresh = data.filter((r) => !seenIdsRef.current.has(r.id));
-        for (const r of fresh) seenIdsRef.current.add(r.id);
-
-        if (
-          typeof Notification !== "undefined" &&
-          Notification.permission === "granted"
-        ) {
-          for (const r of fresh) {
-            if (r.status === "PENDING") {
-              new Notification("New stocking request", {
-                body: `${r.item.name} needs attention.`,
-                tag: `stocking-request-${r.id}`,
-              });
-            }
-          }
-        }
-
+        setHasMore(data.hasMore);
         setLiveStatus("live");
-        setRequests(data);
+        setRequests(data.requests);
       } catch {
         if (!cancelled) setLiveStatus("offline");
       }
@@ -115,7 +113,7 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [activeStatus]);
+  }, [activeStatus, page]);
 
   function handleTabChange(status: RequestStatus | null) {
     if (status) {
@@ -129,23 +127,81 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
 
   async function updateStatus(id: string, status: "APPROVED" | "DECLINED") {
     setLoading(id);
-    const res = await fetch(`/api/requests/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (res.ok) {
-      setRequests((prev) => {
-        const updated = prev.map((r) => (r.id === id ? { ...r, status } : r));
-        // Remove items that no longer match the active filter
-        return activeStatus ? updated.filter((r) => r.status === activeStatus) : updated;
+    setError("");
+    try {
+      const res = await fetch(`/api/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
       });
+      if (!res.ok)
+        throw new Error("Could not update the request. Please try again.");
+      setRequests((prev) =>
+        prev
+          .map((r) => (r.id === id ? { ...r, status } : r))
+          .filter((r) => !activeStatus || r.status === activeStatus),
+      );
+      router.refresh();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Connection failed. Please try again.",
+      );
+    } finally {
+      setLoading(null);
     }
-    setLoading(null);
+  }
+
+  function delivery(r: Request) {
+    if (r.notifications.some((n) => n.status === "FAILED"))
+      return "Notification failed — please follow up";
+    if (
+      r.notifications.some((n) => ["PENDING", "PROCESSING"].includes(n.status))
+    )
+      return "Notifications queued";
+    if (r.notifications.some((n) => n.kind === "EMAIL" && n.status === "SENT"))
+      return "Email accepted by provider";
+    if (r.notifications.some((n) => n.status === "SENT"))
+      return "Push accepted by provider";
+    return r.emailSent
+      ? "Email previously marked sent"
+      : "Recorded without notification";
   }
 
   return (
     <div>
+      {error && (
+        <p role="alert" className="mb-3 text-error">
+          {error}
+        </p>
+      )}
+      <nav
+        aria-label="Request history pages"
+        className="mb-4 flex items-center gap-4"
+      >
+        <button
+          disabled={page <= 1}
+          className="rounded border px-3 py-1 disabled:opacity-40"
+          onClick={() =>
+            router.push(
+              `/requests?page=${page - 1}${activeStatus ? `&status=${activeStatus}` : ""}`,
+            )
+          }
+        >
+          Previous
+        </button>
+        <span>Page {page}</span>
+        <button
+          disabled={!hasMore}
+          className="rounded border px-3 py-1 disabled:opacity-40"
+          onClick={() =>
+            router.push(
+              `/requests?page=${page + 1}${activeStatus ? `&status=${activeStatus}` : ""}`,
+            )
+          }
+        >
+          Next
+        </button>
+      </nav>
       <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-outline-variant px-3 py-1 text-xs">
         <span
           className={`h-2 w-2 rounded-full ${
@@ -167,21 +223,21 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
 
       {/* Tabs */}
       <div className="overflow-x-auto mb-5">
-      <div className="flex gap-1 bg-surface-container rounded-2xl p-1 w-fit">
-        {TABS.map((tab) => (
-          <button
-            key={tab.label}
-            onClick={() => handleTabChange(tab.value)}
-            className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-colors ${
-              activeStatus === tab.value
-                ? "bg-primary text-on-primary shadow-sm"
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+        <div className="flex gap-1 bg-surface-container rounded-2xl p-1 w-fit">
+          {TABS.map((tab) => (
+            <button
+              key={tab.label}
+              onClick={() => handleTabChange(tab.value)}
+              className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-colors ${
+                activeStatus === tab.value
+                  ? "bg-primary text-on-primary shadow-sm"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {requests.length === 0 ? (
@@ -191,51 +247,70 @@ export default function RequestsClient({ initialRequests, activeStatus }: Props)
       ) : (
         <div className="bg-surface-container-lowest rounded-xl overflow-hidden">
           <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-outline-variant bg-surface-container text-left">
-                <th className="px-4 py-3 font-medium text-on-surface-variant">Item</th>
-                <th className="px-4 py-3 font-medium text-on-surface-variant">Requested</th>
-                <th className="px-4 py-3 font-medium text-on-surface-variant">Status</th>
-                <th className="px-4 py-3 font-medium text-on-surface-variant">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((r) => (
-                <tr key={r.id} className="border-b border-outline-variant last:border-0">
-                  <td className="px-4 py-3 font-medium text-on-surface">
-                    {r.item.name}
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant">
-                    {new Date(r.createdAt).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusStyles[r.status]}`}
-                    >
-                      {r.status.charAt(0) + r.status.slice(1).toLowerCase()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <ActionButtons
-                      requestId={r.id}
-                      requestStatus={r.status}
-                      loading={loading}
-                      onApprove={updateStatus}
-                      onDecline={updateStatus}
-                    />
-                  </td>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-outline-variant bg-surface-container text-left">
+                  <th className="px-4 py-3 font-medium text-on-surface-variant">
+                    Item
+                  </th>
+                  <th className="px-4 py-3 font-medium text-on-surface-variant">
+                    Requested
+                  </th>
+                  <th className="px-4 py-3 font-medium text-on-surface-variant">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 font-medium text-on-surface-variant">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {requests.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="border-b border-outline-variant last:border-0"
+                  >
+                    <td className="px-4 py-3 font-medium text-on-surface">
+                      {r.item.name}
+                      <p className="text-xs font-normal text-on-surface-variant">
+                        {delivery(r)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-on-surface-variant">
+                      {new Date(r.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusStyles[r.status]}`}
+                      >
+                        {r.status.charAt(0) + r.status.slice(1).toLowerCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <ActionButtons
+                        requestId={r.id}
+                        requestStatus={r.status}
+                        loading={loading}
+                        onApprove={updateStatus}
+                        onDecline={updateStatus}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
           <ul className="divide-y divide-outline-variant md:hidden">
             {requests.map((r) => (
               <li key={r.id} className="px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium text-sm text-on-surface truncate">{r.item.name}</p>
+                    <p className="font-medium text-sm text-on-surface truncate">
+                      {r.item.name}
+                    </p>
+                    <p className="text-xs text-on-surface-variant">
+                      {delivery(r)}
+                    </p>
                     <p className="text-xs text-on-surface-variant mt-1">
                       {new Date(r.createdAt).toLocaleString()}
                     </p>
@@ -285,7 +360,9 @@ function ActionButtons({
   }
 
   return (
-    <div className={`flex gap-2 ${mobile ? "flex-col sm:flex-row" : "flex-row"}`}>
+    <div
+      className={`flex gap-2 ${mobile ? "flex-col sm:flex-row" : "flex-row"}`}
+    >
       <button
         onClick={() => onApprove(requestId, "APPROVED")}
         disabled={loading === requestId}

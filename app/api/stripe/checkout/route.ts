@@ -1,53 +1,34 @@
-import { NextRequest, NextResponse } from "next/server";
+import { reportError } from "@/lib/monitoring";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getStripeClient, getStripePriceIds, isStripeConfigured } from "@/lib/stripe";
-import { z } from "zod";
-
-const schema = z.object({
-  tier: z.enum(["PRO"]),
-});
-
-export async function POST(req: NextRequest) {
-  if (!isStripeConfigured()) {
-    return NextResponse.json({ error: "Stripe is not configured." }, { status: 503 });
-  }
-
+import { isStripeConfigured } from "@/lib/stripe";
+import { startCheckout } from "@/lib/billing";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+export async function POST(req: Request) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const body = await req.json();
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isStripeConfigured())
+    return Response.json({ error: "Billing is unavailable." }, { status: 503 });
+  const limit = await checkRateLimit(
+    `checkout:${session.user.id}`,
+    { limit: 10, windowSeconds: 3600 },
+    true,
+  );
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+  const body = await req.json().catch(() => null);
+  if (body?.tier !== "PRO")
+    return Response.json({ error: "Invalid tier." }, { status: 400 });
+  try {
+    return Response.json({ url: await startCheckout(session.user.id) });
+  } catch (error) {
+    reportError("Checkout failed", error);
+    return Response.json(
+      { error: "Unable to start billing. Please try again." },
+      { status: 502 },
+    );
   }
-
-  const tier = parsed.data.tier as "PRO";
-  const priceIds = await getStripePriceIds();
-  const priceId = priceIds[tier];
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { stripeCustomerId: true, email: true },
-  });
-
-  const stripe = getStripeClient();
-  const checkoutSession = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: user?.stripeCustomerId ?? undefined,
-    customer_email: user?.stripeCustomerId ? undefined : user?.email,
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}/settings?upgraded=1`,
-    cancel_url: `${baseUrl}/settings`,
-    metadata: { userId: session.user.id, tier },
-    consent_collection: { terms_of_service: "required" },
-    custom_text: {
-      terms_of_service_acceptance: {
-        message: `I agree to the InventoryAlert [Terms of Service](${baseUrl}/terms).`,
-      },
-    },
-  });
-
-  return NextResponse.json({ url: checkoutSession.url });
 }

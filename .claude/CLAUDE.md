@@ -10,6 +10,7 @@
 **InventoryAlert** is a subscription-based SaaS inventory management system. Users register inventory items, each of which receives a unique QR code that can be printed as a physical label. When a QR code is scanned, the system sends a low-stock alert email to the configured address and records a `StockingRequest` in the database. A two-tier subscription model (FREE / PRO) enforces item limits and feature access, backed by Stripe for payment processing.
 
 **Core user flows:**
+
 1. Register / log in (email + password)
 2. Create inventory items with optional image, description, and low-stock threshold
 3. Print QR code labels (3 sizes: 3"×1", 2"×1", 1"×1") with a drag-and-drop text editor — PRO only for editing/repositioning fields
@@ -21,25 +22,25 @@
 
 ## Tech Stack
 
-| Category | Technology | Version |
-|---|---|---|
-| Framework | Next.js (App Router) | 16.2.1 |
-| UI Runtime | React | 19.2.4 |
-| Language | TypeScript | ^5 |
-| Styling | Tailwind CSS | ^4 |
-| Database | PostgreSQL (via Prisma) | — |
-| ORM | Prisma + @prisma/adapter-pg | ^7.5.0 |
-| Authentication | NextAuth v5 (beta, Credentials) | ^5.0.0-beta.30 |
-| Password Hashing | bcryptjs | ^3.0.3 |
-| Validation | Zod | ^4.3.6 |
-| Payments | Stripe | ^20.4.1 |
-| Email | Resend | ^6.9.4 |
-| File Storage | Vercel Blob | ^2.3.1 |
-| QR Code | qrcode | ^1.5.4 |
-| Push Notifications | web-push (VAPID) | ^3.x |
-| Linting | ESLint + eslint-config-next (flat config) | ^9 / ^16 |
-| Testing | Vitest (`*.test.ts` alongside source) | ^4 |
-| CI | GitHub Actions (`.github/workflows/ci.yml`) — lint, typecheck, test, build | — |
+| Category           | Technology                                                                 | Version        |
+| ------------------ | -------------------------------------------------------------------------- | -------------- |
+| Framework          | Next.js (App Router)                                                       | 16.2.1         |
+| UI Runtime         | React                                                                      | 19.2.4         |
+| Language           | TypeScript                                                                 | ^5             |
+| Styling            | Tailwind CSS                                                               | ^4             |
+| Database           | PostgreSQL (via Prisma)                                                    | —              |
+| ORM                | Prisma + @prisma/adapter-pg                                                | ^7.5.0         |
+| Authentication     | NextAuth v5 (beta, Credentials)                                            | ^5.0.0-beta.30 |
+| Password Hashing   | bcryptjs                                                                   | ^3.0.3         |
+| Validation         | Zod                                                                        | ^4.3.6         |
+| Payments           | Stripe                                                                     | ^20.4.1        |
+| Email              | Resend                                                                     | ^6.9.4         |
+| File Storage       | Vercel Blob                                                                | ^2.3.1         |
+| QR Code            | qrcode                                                                     | ^1.5.4         |
+| Push Notifications | web-push (VAPID)                                                           | ^3.x           |
+| Linting            | ESLint + eslint-config-next (flat config)                                  | ^9 / ^16       |
+| Testing            | Vitest (`*.test.ts` alongside source)                                      | ^4             |
+| CI                 | GitHub Actions (`.github/workflows/ci.yml`) — lint, typecheck, test, build | —              |
 
 > **Note:** This project uses **Next.js 16** with the App Router — APIs, conventions, and file structure may differ from older Next.js versions. Always read `node_modules/next/dist/docs/` before writing new Next.js code.
 
@@ -159,20 +160,20 @@ PRs must target `dev`, not `main`, unless it is a hotfix.
 
 ## Naming Conventions
 
-| Artifact | Convention | Example |
-|---|---|---|
-| React components | PascalCase | `ItemCard.tsx`, `QRCodeDisplay.tsx` |
-| Utility/lib files | camelCase | `prisma.ts`, `stripe.ts` |
-| API route files | Next.js convention | `route.ts` inside directory |
-| Page files | Next.js convention | `page.tsx` inside directory |
-| Props interfaces | `interface Props { ... }` | `interface Props { item: InventoryItem }` |
-| Validation schemas | camelCase + suffix | `createItemSchema`, `updateItemSchema` |
-| DB models | PascalCase | `User`, `InventoryItem`, `StockingRequest` |
-| DB enums | UPPER_CASE | `Tier.FREE`, `RequestStatus.PENDING` |
-| DB fields | camelCase | `stripeCustomerId`, `qrCodeId` |
-| Constants | UPPER_SNAKE_CASE | `TIER_LIMITS`, `LABEL_SIZES`, `MAX_SIZE` |
-| Environment vars | UPPER_SNAKE_CASE | `NEXTAUTH_SECRET`, `RESEND_API_KEY` |
-| Public env vars | `NEXT_PUBLIC_` prefix | `NEXT_PUBLIC_BASE_URL` |
+| Artifact           | Convention                | Example                                    |
+| ------------------ | ------------------------- | ------------------------------------------ |
+| React components   | PascalCase                | `ItemCard.tsx`, `QRCodeDisplay.tsx`        |
+| Utility/lib files  | camelCase                 | `prisma.ts`, `stripe.ts`                   |
+| API route files    | Next.js convention        | `route.ts` inside directory                |
+| Page files         | Next.js convention        | `page.tsx` inside directory                |
+| Props interfaces   | `interface Props { ... }` | `interface Props { item: InventoryItem }`  |
+| Validation schemas | camelCase + suffix        | `createItemSchema`, `updateItemSchema`     |
+| DB models          | PascalCase                | `User`, `InventoryItem`, `StockingRequest` |
+| DB enums           | UPPER_CASE                | `Tier.FREE`, `RequestStatus.PENDING`       |
+| DB fields          | camelCase                 | `stripeCustomerId`, `qrCodeId`             |
+| Constants          | UPPER_SNAKE_CASE          | `TIER_LIMITS`, `LABEL_SIZES`, `MAX_SIZE`   |
+| Environment vars   | UPPER_SNAKE_CASE          | `NEXTAUTH_SECRET`, `RESEND_API_KEY`        |
+| Public env vars    | `NEXT_PUBLIC_` prefix     | `NEXT_PUBLIC_BASE_URL`                     |
 
 ---
 
@@ -196,7 +197,8 @@ export async function GET(request: Request) {
 - Validate request bodies with Zod `.safeParse()`:
   ```ts
   const result = schema.safeParse(body);
-  if (!result.success) return NextResponse.json({ error: result.error }, { status: 400 });
+  if (!result.success)
+    return NextResponse.json({ error: result.error }, { status: 400 });
   ```
 - Return `{ error: string }` with appropriate HTTP status on failure
 - Public routes (scan, webhook): no auth check; Stripe webhook verifies signature manually
@@ -207,7 +209,9 @@ export async function GET(request: Request) {
 // app/(dashboard)/items/page.tsx
 export default async function ItemsPage() {
   const session = await auth();
-  const items = await prisma.inventoryItem.findMany({ where: { userId: session.user.id } });
+  const items = await prisma.inventoryItem.findMany({
+    where: { userId: session.user.id },
+  });
   return <ItemList items={items} />;
 }
 ```
@@ -231,7 +235,8 @@ export default function ItemForm({ item }: Props) {
 ```ts
 import { canCreateItem, TIER_LIMITS } from "@/lib/tier";
 const allowed = canCreateItem(session.user.tier, currentCount);
-if (!allowed) return NextResponse.json({ error: "Upgrade required" }, { status: 403 });
+if (!allowed)
+  return NextResponse.json({ error: "Upgrade required" }, { status: 403 });
 ```
 
 ### Email Alerts
@@ -267,11 +272,13 @@ Unit tests run on **Vitest** (`vitest.config.ts` maps the `@/` alias; node envir
 - Existing coverage: `lib/tier.test.ts`, `lib/validations/item.test.ts`, `lib/rate-limit.test.ts` (Prisma mocked via `vi.mock`), `lib/env.test.ts` (uses `vi.stubEnv`)
 
 **Conventions:**
+
 - Mock `@/lib/prisma` with `vi.mock` for modules that touch the DB
 - Use `vi.stubEnv` / `vi.unstubAllEnvs` for env-dependent code
 - Integration tests for API routes (future) can use `@testing-library/react` + MSW
 
 **Not yet covered (good next targets):**
+
 - `/api/scan/[qrCodeId]` route flow (cooldown + recipients) — needs a Prisma mock or test DB
 - `/api/auth/register` — validation and duplicate email handling
 - Stripe webhook tier transitions
@@ -282,11 +289,11 @@ Unit tests run on **Vitest** (`vitest.config.ts` maps the `@/` alias; node envir
 
 ## Known Gaps & TODOs
 
-| # | Area | Description | Priority |
-|---|---|---|---|
-| 1 | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented (#9) | Medium |
-| 2 | Error monitoring (ops) | `/api/health` + structured `onRequestError` logs exist; hosted error monitoring (e.g. Sentry DSN) and an uptime monitor still need provisioning (#64) | Medium |
-| 3 | Email verification | Credential registrations aren't email-verified (Google sign-ins are); alert recipients can be arbitrary third-party addresses (#68) | Low |
+| #   | Area                         | Description                                                                                                                                           | Priority |
+| --- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 1   | Third-party cart integration | Schema fields exist (`externalCartLink`, `externalPlatform`, `externalApiKeyRef`) but feature not implemented (#9)                                    | Medium   |
+| 2   | Error monitoring (ops)       | `/api/health` + structured `onRequestError` logs exist; hosted error monitoring (e.g. Sentry DSN) and an uptime monitor still need provisioning (#64) | Medium   |
+| 3   | Email verification           | Credential registrations aren't email-verified (Google sign-ins are); alert recipients can be arbitrary third-party addresses (#68)                   | Low      |
 
 ---
 
@@ -313,3 +320,25 @@ When making code changes, update this file if any of the following change:
 7. **Branch strategy changes** → update Branch Strategy
 
 Commit CLAUDE.md changes in the same commit as the code changes that prompted them.
+
+## September 2026 hardening update
+
+The July Known Gaps table above is superseded by issue #70 and `docs/production-release.md`.
+This release updates Next.js/Auth.js/Prisma dependencies; adds optional Sentry reporting;
+verifies accounts/recipients; revokes sessions on recovery; reads current entitlements;
+tracks image ownership; makes QR GET read-only; persists leased notification jobs;
+serializes item limits/cooldowns; reconciles Stripe state and deduplicates webhook events;
+and paginates request history. New models: StoredImage, RecipientConsent,
+NotificationJob, StripeWebhookEvent. New auth fields: sessionVersion and checkout attempt.
+
+Routes: `/verify-account`, `/onboarding`, `/confirm-recipient`, `/api/recipients`,
+`/api/recipients/confirm`, `/api/auth/onboarding`, `/api/jobs/notifications`,
+`/api/jobs/maintenance`. The worker uses CRON_SECRET and requires a production scheduler.
+New uploads are decoded/re-encoded by sharp. Provider delivery acceptance is not inbox delivery.
+
+Run `npm run test:db`, lint, typecheck, production audit and build. CI uses PostgreSQL 16.
+The earlier-dated pricing bridge is intentional and does not edit historical checksums.
+See the runbook before applying migrations or promoting dev to main. Hosted monitoring,
+production backup/restore and real-device/provider checks remain release gates.
+
+Scheduling: vercel.json includes daily maintenance only. Enable and verify the optional notification-worker GitHub workflow or configure Vercel Pro/external scheduling before launch; it is disabled by default.

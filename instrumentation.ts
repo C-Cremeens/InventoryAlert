@@ -5,6 +5,8 @@ export async function register() {
   // intentionally run without any configured environment.
   if (process.env.NEXT_PHASE === "phase-production-build") return;
 
+  if (process.env.NEXT_RUNTIME === "nodejs")
+    await import("./sentry.server.config");
   const { validateEnv } = await import("@/lib/env");
   validateEnv();
 }
@@ -15,8 +17,13 @@ export async function register() {
 export const onRequestError: Instrumentation.onRequestError = async (
   err,
   request,
-  context
+  context,
 ) => {
+  if (process.env.SENTRY_DSN) {
+    const Sentry = await import("@sentry/nextjs");
+    await Sentry.captureRequestError(err, request, context);
+    await Sentry.flush(2000);
+  }
   const error =
     err instanceof Error
       ? {
@@ -32,12 +39,12 @@ export const onRequestError: Instrumentation.onRequestError = async (
       level: "error",
       event: "unhandled_request_error",
       method: request.method,
-      path: request.path,
+      path: request.path.split("?")[0],
       routerKind: context.routerKind,
       routePath: context.routePath,
       routeType: context.routeType,
       error,
       ts: new Date().toISOString(),
-    })
+    }),
   );
 };

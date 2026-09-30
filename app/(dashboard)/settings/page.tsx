@@ -1,3 +1,4 @@
+import RecipientVerification from "@/components/items/RecipientVerification";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TIER_LIMITS } from "@/lib/tier";
@@ -8,35 +9,43 @@ import { Prisma } from "@prisma/client";
 
 export default async function SettingsPage() {
   const session = await auth();
-  if (!session) return null;
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return null;
 
-  const [user, itemCount, stripePrices, pushSubscriptionCount] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        email: true,
-        name: true,
-        tier: true,
-        stripeCustomerId: true,
-        stripeCurrentPeriodEnd: true,
-        stripeSubscriptionStatus: true,
-      },
-    }),
-    prisma.inventoryItem.count({ where: { userId: session.user.id } }),
-    fetchStripePrices(),
-    prisma.pushSubscription.count({ where: { userId: session.user.id } }).catch((error) => {
-      // Gracefully degrade if the PushSubscription table isn't available yet
-      // (e.g. database migration lag) so Settings can still render.
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2021"
-      ) {
-        return 0;
-      }
+  const [user, itemCount, stripePrices, pushSubscriptionCount] =
+    await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+          email: true,
+          name: true,
+          tier: true,
+          stripeCustomerId: true,
+          stripeCurrentPeriodEnd: true,
+          stripeSubscriptionStatus: true,
+        },
+      }),
+      prisma.inventoryItem.count({ where: { userId: session.user.id } }),
+      fetchStripePrices(),
+      prisma.pushSubscription
+        .count({ where: { userId: session.user.id } })
+        .catch((error) => {
+          // Gracefully degrade if the PushSubscription table isn't available yet
+          // (e.g. database migration lag) so Settings can still render.
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2021"
+          ) {
+            return 0;
+          }
 
-      throw error;
-    }),
-  ]);
+          throw error;
+        }),
+    ]);
 
   if (!user) return null;
 
@@ -45,15 +54,16 @@ export default async function SettingsPage() {
 
   return (
     <div className="max-w-lg space-y-8">
-      <h1 className="text-2xl font-bold text-on-surface font-headline">Settings</h1>
+      <h1 className="text-2xl font-bold text-on-surface font-headline">
+        Settings
+      </h1>
 
       {/* Account */}
       <section className="bg-surface-container-lowest rounded-xl shadow-sm p-4 sm:p-6 space-y-3">
         <h2 className="font-semibold text-on-surface font-headline">Account</h2>
         <div className="text-sm text-on-surface-variant">
           <p>
-            <span className="text-outline">Name:</span>{" "}
-            {user.name ?? "—"}
+            <span className="text-outline">Name:</span> {user.name ?? "—"}
           </p>
           <p className="mt-1">
             <span className="text-outline">Email:</span> {user.email}
@@ -61,19 +71,25 @@ export default async function SettingsPage() {
         </div>
       </section>
 
+      <RecipientVerification />
       {/* Plan */}
       <section className="bg-surface-container-lowest rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-on-surface font-headline">Current Plan</h2>
+          <h2 className="font-semibold text-on-surface font-headline">
+            Current Plan
+          </h2>
           <TierBadge tier={tier} />
         </div>
 
         {user.stripeSubscriptionStatus === "past_due" && (
           <div className="rounded-lg bg-error-container text-on-error-container text-sm p-3">
-            <p className="font-medium">There&apos;s a problem with your payment method.</p>
+            <p className="font-medium">
+              There&apos;s a problem with your payment method.
+            </p>
             <p className="mt-1">
-              Your last payment didn&apos;t go through. Update your payment details via
-              &ldquo;Manage subscription&rdquo; below to keep your Pro features.
+              Your last payment didn&apos;t go through. Update your payment
+              details via &ldquo;Manage subscription&rdquo; below to keep your
+              Pro features.
             </p>
           </div>
         )}

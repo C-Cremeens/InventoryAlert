@@ -5,9 +5,8 @@ import { prisma } from "@/lib/prisma";
  * (RateLimitWindow) so limits hold across serverless function instances —
  * an in-memory limiter would reset on every cold start.
  *
- * Fails open: if the counter can't be read or written, the request is
- * allowed and the error logged. Rate limiting must never take the
- * product down with it.
+ * Security-sensitive callers pass failClosed=true. Cleanup is performed by
+ * the authenticated maintenance job, not fire-and-forget request work.
  */
 
 export const RATE_LIMITS = {
@@ -26,13 +25,10 @@ export type RateLimitResult = {
   retryAfterSeconds: number;
 };
 
-// ~1% of calls sweep windows old enough to be irrelevant to any active limit.
-const CLEANUP_PROBABILITY = 0.01;
-const CLEANUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-
 export async function checkRateLimit(
   key: string,
-  config: { limit: number; windowSeconds: number }
+  config: { limit: number; windowSeconds: number },
+  failClosed = false,
 ): Promise<RateLimitResult> {
   const windowMs = config.windowSeconds * 1000;
   const windowStart = new Date(Math.floor(Date.now() / windowMs) * windowMs);
@@ -44,17 +40,10 @@ export async function checkRateLimit(
       update: { count: { increment: 1 } },
     });
 
-    if (Math.random() < CLEANUP_PROBABILITY) {
-      const cutoff = new Date(Date.now() - CLEANUP_MAX_AGE_MS);
-      void prisma.rateLimitWindow
-        .deleteMany({ where: { windowStart: { lt: cutoff } } })
-        .catch((err) => console.error("Rate limit cleanup failed:", err));
-    }
-
     if (row.count > config.limit) {
       const retryAfterSeconds = Math.max(
         1,
-        Math.ceil((windowStart.getTime() + windowMs - Date.now()) / 1000)
+        Math.ceil((windowStart.getTime() + windowMs - Date.now()) / 1000),
       );
       return { allowed: false, retryAfterSeconds };
     }
@@ -62,7 +51,7 @@ export async function checkRateLimit(
     return { allowed: true, retryAfterSeconds: 0 };
   } catch (err) {
     console.error(`Rate limit check failed for key "${key}":`, err);
-    return { allowed: true, retryAfterSeconds: 0 };
+    return { allowed: !failClosed, retryAfterSeconds: failClosed ? 60 : 0 };
   }
 }
 
@@ -91,6 +80,6 @@ export function rateLimitResponse(retryAfterSeconds: number, message?: string) {
         "Content-Type": "application/json",
         "Retry-After": String(retryAfterSeconds),
       },
-    }
+    },
   );
 }

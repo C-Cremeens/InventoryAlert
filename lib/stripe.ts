@@ -6,6 +6,8 @@ let stripeClient: Stripe | null = null;
 function createStripeClient(secretKey: string): Stripe {
   return new Stripe(secretKey, {
     apiVersion: "2026-02-25.clover",
+    timeout: 10000,
+    maxNetworkRetries: 1,
   });
 }
 
@@ -24,10 +26,7 @@ export const STRIPE_PRODUCTS = {
 type PaidTier = "PRO";
 
 export function isStripeConfigured(): boolean {
-  return Boolean(
-    getStripeSecretKey() &&
-    STRIPE_PRICES.PRO
-  );
+  return Boolean(getStripeSecretKey() && STRIPE_PRICES.PRO);
 }
 
 export function getStripeClient(): Stripe {
@@ -46,13 +45,19 @@ export function getStripeClient(): Stripe {
 function formatStripePrice(price: Stripe.Price): string {
   const amount = price.unit_amount ? price.unit_amount / 100 : 0;
   const interval = price.recurring?.interval ?? "mo";
-  const formatted = Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+  const formatted = Number.isInteger(amount)
+    ? `$${amount}`
+    : `$${amount.toFixed(2)}`;
   return `${formatted}/${interval}`;
 }
 
-async function getDefaultPriceIdForProduct(productId: string): Promise<string | null> {
+async function getDefaultPriceIdForProduct(
+  productId: string,
+): Promise<string | null> {
   const stripe = getStripeClient();
-  const product = await stripe.products.retrieve(productId, { expand: ["default_price"] });
+  const product = await stripe.products.retrieve(productId, {
+    expand: ["default_price"],
+  });
   if (!product.default_price) return null;
 
   if (typeof product.default_price === "string") {
@@ -81,7 +86,7 @@ export async function getStripePriceIds(): Promise<Record<PaidTier, string>> {
       } catch {
         return [tier, fallback[tier]] as const;
       }
-    })
+    }),
   );
 
   return Object.fromEntries(resolved) as Record<PaidTier, string>;

@@ -1,29 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import type { RequestStatus } from "@prisma/client";
-
-export async function GET(req: NextRequest) {
+import { historyQuery, requestHistory } from "@/lib/request-history";
+export async function GET(req: Request) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { searchParams } = new URL(req.url);
-  const statusParam = searchParams.get("status");
-
-  const validStatuses: RequestStatus[] = ["PENDING", "APPROVED", "DECLINED"];
-  const status =
-    statusParam && validStatuses.includes(statusParam as RequestStatus)
-      ? (statusParam as RequestStatus)
-      : undefined;
-
-  const requests = await prisma.stockingRequest.findMany({
-    where: {
-      item: { userId: session.user.id },
-      ...(status ? { status } : {}),
-    },
-    include: { item: { select: { name: true, id: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return NextResponse.json(requests);
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const params = new URL(req.url).searchParams;
+  return Response.json(
+    await requestHistory(
+      session.user.id,
+      historyQuery(params.get("status"), params.get("page")),
+    ),
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

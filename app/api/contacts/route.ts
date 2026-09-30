@@ -2,17 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { normalizeContactInput, RecipientConfigError, isProTier } from "@/lib/alert-recipients";
+import {
+  normalizeContactInput,
+  RecipientConfigError,
+  isProTier,
+} from "@/lib/alert-recipients";
 import { alertContactSchema } from "@/lib/validations/contact";
 
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (
+    !session?.user?.id ||
+    !session.user.emailVerifiedAt ||
+    !session.user.termsAcceptedAt
+  )
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isProTier(session.user.tier)) {
     return NextResponse.json(
       { error: "Contacts are a Pro feature.", code: "PRO_FEATURE_REQUIRED" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -36,19 +45,24 @@ export async function GET() {
     contacts.map(({ _count, ...contact }) => ({
       ...contact,
       assignedItemCount: _count.itemRecipients,
-    }))
+    })),
   );
 }
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (
+      !session?.user?.id ||
+      !session.user.emailVerifiedAt ||
+      !session.user.termsAcceptedAt
+    )
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     if (!isProTier(session.user.tier)) {
       return NextResponse.json(
         { error: "Contacts are a Pro feature.", code: "PRO_FEATURE_REQUIRED" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -57,7 +71,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -86,7 +100,7 @@ export async function POST(req: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "A contact with this email already exists." },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -95,6 +109,9 @@ export async function POST(req: NextRequest) {
     }
 
     console.error("[POST /api/contacts]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
