@@ -12,7 +12,7 @@ feature/*, fix/* ──PR──▶ dev ──PR──▶ uat ──PR──▶ m
 
 | Workflow | Runs on | Checks |
 |---|---|---|
-| `ci` (`.github/workflows/ci.yml`) | PRs and pushes to `dev`, `uat`, `main` | `npm ci` from the lockfile, high/critical production audit, lint, typecheck, full migration history on a disposable PostgreSQL 16 service, unit and integration tests, production build |
+| `ci` (`.github/workflows/ci.yml`) | PRs into `dev`, `uat`, `main`; pushes to them run it as the first job of `deploy.yml` | `npm ci` from the lockfile, high/critical production audit, lint, typecheck, full migration history on a disposable PostgreSQL 16 service, unit and integration tests, production build |
 | `promotion-guard` (`.github/workflows/promotion-guard.yml`) | PRs into `uat` and `main` | Source branch is allowed for the target and the candidate commit is already on the source stage (table below) |
 
 Both workflows use `pull_request` (never `pull_request_target`), a read-only `contents: read` token, `persist-credentials: false` and no repository or environment secrets, so PR code cannot reach deployment credentials. Third-party actions are pinned to full commit SHAs with the version in a trailing comment; update both together. CI uses Node 22 (`setup-node`), matching the version the repo already built with.
@@ -37,7 +37,7 @@ A PR from `dev` into `uat` picks up every later push to `dev`. When UAT signoff 
 
 ### Hotfixes
 
-1. Cut `hotfix/<slug>` from `main` and open a PR into `main`. Both checks must pass.
+1. Cut `hotfix/<slug>` from `main` and open a PR into `main`. Both checks must pass. Release it by dispatching **Deploy** on `main` with `hotfix` ticked; UAT has not tested it, so the promotion check otherwise fails.
 2. After it merges, open `main → uat` and `main → dev` PRs promptly so the fix is not lost at the next promotion.
 
 ## Branch protection (manual repository setting)
@@ -53,9 +53,9 @@ Before this: create `uat` from an explicitly approved `dev` commit (`git push or
 | Require branches to be up to date before merging | ✅ | ✅ | ✅ |
 | Block force pushes | ✅ | ✅ | ✅ |
 | Restrict deletions | ✅ | ✅ | ✅ |
-| Required approvals | 0 | 0 | 0 (the `PROD` GitHub Environment approval gates deployment, #92) |
+| Required approvals | 0 | 0 | 0 (the `PROD` GitHub Environment approval gates deployment; see [deployment.md](deployment.md)) |
 
-A sole maintainer cannot approve their own PR on GitHub, so requiring reviews would block every merge. Production approval is handled by the `PROD` environment's required reviewer (Chris) once the deployment workflow in #92 exists; self-approval is allowed there.
+A sole maintainer cannot approve their own PR on GitHub, so requiring reviews would block every merge. Production approval is handled by the `PROD` environment's required reviewer (Chris) in `deploy.yml`; self-approval is allowed there. Merging into `main` does not release: production is released by dispatching **Deploy** on `main` ([deployment.md](deployment.md)), and only content UAT successfully deployed passes its promotion check.
 
 A status check only appears in the required-check picker after it has run once on the repository, so open one PR into `uat` before configuring that branch.
 

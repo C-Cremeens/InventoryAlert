@@ -1,18 +1,8 @@
 name: Database migrations
 # Applies committed Prisma migrations to the database the triggering branch maps to (#91).
-# Called by the deployment workflows (#92) after CI passes; can also be run manually.
+# Manual entry point; deploy.yml (#92) runs the same steps (.github/actions/migrate) during releases.
 # Fails closed on any identity mismatch. See docs/database-migrations.md.
 on:
-  workflow_call:
-    inputs:
-      backup-verified:
-        description: Production only. Confirms the backup/restore check in docs/database-migrations.md was done for this release.
-        type: boolean
-        default: false
-    outputs:
-      restore-at:
-        description: Database time captured immediately before migrating (Neon point-in-time restore target).
-        value: ${{ jobs.migrate.outputs.restore-at }}
   workflow_dispatch:
     inputs:
       backup-verified:
@@ -45,13 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: ${{ needs.resolve.outputs.environment }}
-    # One migration per environment at a time. A running migration is never cancelled;
-    # a newer queued run replaces an older queued one.
+    # Shares the release lock with deploy.yml: one release or migration per environment at a
+    # time. A running one is never cancelled; a newer queued run replaces an older queued one.
     concurrency:
-      group: migrate-${{ needs.resolve.outputs.environment }}
+      group: release-${{ needs.resolve.outputs.environment }}
       cancel-in-progress: false
-    outputs:
-      restore-at: ${{ steps.validate.outputs.restore-at }}
     steps:
       - name: Require production backup confirmation
         if: needs.resolve.outputs.environment == 'PROD' && !inputs.backup-verified
@@ -67,46 +55,12 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Validate migration target
-        id: validate
-        run: node scripts/migration-target.mjs
-        env:
-          GIT_REF_NAME: ${{ github.ref_name }}
-          APP_ENV: ${{ vars.APP_ENV }}
-          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
-          NEON_BRANCH_ID: ${{ vars.NEON_BRANCH_ID }}
-          NEON_ENDPOINT_ID: ${{ vars.NEON_ENDPOINT_ID }}
-          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-      # migrate status exits non-zero while migrations are pending, so this listing never fails the job.
-      - name: Pending migrations
-        run: npx prisma migrate status || true
-        env:
-          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
-      # The migration credential is bound to Prisma's DATABASE_URL only within these steps.
-      - name: Apply migrations
-        run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
-      - name: Verify no migrations are pending
-        run: npx prisma migrate status
-        env:
-          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
-      - name: Record migration
-        if: always() && steps.validate.outcome == 'success'
-        env:
-          ENVIRONMENT: ${{ needs.resolve.outputs.environment }}
-          NEON_BRANCH_ID: ${{ vars.NEON_BRANCH_ID }}
-          RESTORE_AT: ${{ steps.validate.outputs.restore-at }}
-          RESTORE_LSN: ${{ steps.validate.outputs.restore-lsn }}
-          RESULT: ${{ job.status }}
-        run: |
-          {
-            echo "### Migration: $ENVIRONMENT ($RESULT)"
-            echo "| | |"
-            echo "|---|---|"
-            echo "| Source | \`$GITHUB_SHA\` ($GITHUB_REF_NAME) |"
-            echo "| Neon branch | \`$NEON_BRANCH_ID\` |"
-            echo "| Restore point (before migrating) | $RESTORE_AT, LSN \`$RESTORE_LSN\` |"
-            echo "| Committed migrations at source | $(ls prisma/migrations | grep -c "^[0-9]") |"
-          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: ./.github/actions/migrate
+        with:
+          environment: ${{ needs.resolve.outputs.environment }}
+          app-env: ${{ vars.APP_ENV }}
+          neon-project-id: ${{ vars.NEON_PROJECT_ID }}
+          neon-branch-id: ${{ vars.NEON_BRANCH_ID }}
+          neon-endpoint-id: ${{ vars.NEON_ENDPOINT_ID }}
+          migration-database-url: ${{ secrets.MIGRATION_DATABASE_URL }}
+          neon-api-key: ${{ secrets.NEON_API_KEY }}
