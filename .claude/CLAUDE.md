@@ -129,10 +129,17 @@
 ├── .github/workflows/
 │   ├── ci.yml                    # Lint, typecheck, audit, migrations, tests, build on dev/uat/main
 │   ├── promotion-guard.yml       # Enforces dev → uat → main promotion paths
+│   ├── migrate.yml               # Reusable: identity-checked, serialized `prisma migrate deploy` per environment
 │   └── notification-worker.yml   # Optional scheduled notification retry worker
 ├── docs/
 │   ├── production-release.md     # Release runbook
-│   └── branching-and-promotion.md
+│   ├── branching-and-promotion.md
+│   └── database-migrations.md    # Migration pipeline, environment marker, roles, expand/contract, recovery
+├── scripts/
+│   ├── test-db.mjs               # `npm run test:db`: migrations + tests on disposable PGlite
+│   ├── migration-target.mjs      # Validates a migration job's Neon target (marker, endpoint, APP_ENV)
+│   ├── rehearse-upgrade.mjs      # CI: upgrade main's schema + fixtures to this commit; released migrations immutable
+│   └── upgrade-fixtures.sql
 ├── .claude/
 │   └── CLAUDE.md                 # ← This file
 ├── .mcp.json.example             # MCP server config template
