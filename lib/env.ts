@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { APP_ENVS } from "@/lib/app-env";
 
 /**
  * Validates server environment configuration at startup (via instrumentation.ts).
@@ -51,6 +52,16 @@ export function validateEnv(): void {
         `${group} is partially configured — missing: ${missing.join(", ")}`,
       );
     }
+  }
+
+  // Hosted environment identity (#92); compared by the deployment smoke test.
+  const appEnv = process.env.APP_ENV;
+  if (appEnv && !(APP_ENVS as readonly string[]).includes(appEnv)) {
+    problems.push(`APP_ENV: must be one of ${APP_ENVS.join(", ")}`);
+  } else if (!appEnv && process.env.VERCEL) {
+    warnings.push(
+      "APP_ENV is not set — deployment smoke tests will reject this deployment",
+    );
   }
 
   for (const v of PRODUCTION_RECOMMENDED) {

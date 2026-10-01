@@ -1,6 +1,6 @@
 # Database migrations
 
-Tracks #91 under roadmap #88. Committed Prisma migrations reach each environment through one reusable workflow, `.github/workflows/migrate.yml`. Each run first proves it is connected to the right Neon branch. Persistent environments only ever run `prisma migrate deploy`; never `db push`, `migrate dev` or `migrate reset`.
+Tracks #91 under roadmap #88. Committed Prisma migrations reach each environment through one composite action, `.github/actions/migrate`. Releases run it inside `.github/workflows/deploy.yml` ([deployment.md](deployment.md)); `.github/workflows/migrate.yml` runs it on its own. Each run first proves it is connected to the right Neon branch. Persistent environments only ever run `prisma migrate deploy`; never `db push`, `migrate dev` or `migrate reset`.
 
 ## What runs where
 
@@ -9,7 +9,7 @@ Tracks #91 under roadmap #88. Committed Prisma migrations reach each environment
 | Full history on a fresh database  | `ci` → "Rehearse complete migration history", `tests/migrations.test.ts`                      | Every migration applies from empty, and data survives the newest migration                                    |
 | Upgrade from production           | `ci` → "Rehearse upgrade from the production release (main)" (`scripts/rehearse-upgrade.mjs`) | The schema `main` runs, with fixture data, upgrades to this commit and keeps the data                         |
 | Released migrations are immutable | Same script                                                                                   | No migration that exists on `main` was edited or removed                                                      |
-| Target identity                   | `migrate.yml` → "Validate migration target" (`scripts/migration-target.mjs`)                  | The credentials point at the expected Neon endpoint and branch, and the database's environment marker matches |
+| Target identity                   | `.github/actions/migrate` → "Validate migration target" (`scripts/migration-target.mjs`)      | The credentials point at the expected Neon endpoint and branch, and the database's environment marker matches |
 
 `main`'s own migration history cannot install on an empty database (`20260418200000_refactor_pricing_tiers` fails without the later-added bridge `20260418190000_prepare_tier_refactor`). The rehearsal therefore rebuilds the production schema from this commit's migrations that sort up to `main`'s newest one, which includes the bridge.
 
@@ -17,7 +17,7 @@ When a new migration needs the rehearsal fixtures to cover a changed table, upda
 
 ## Running a migration
 
-`migrate.yml` takes its target only from the branch it runs on:
+Both workflows take the target only from the branch they run on:
 
 | Branch | GitHub Environment | `APP_ENV`    |
 | ------ | ------------------ | ------------ |
@@ -25,14 +25,14 @@ When a new migration needs the rehearsal fixtures to cover a changed table, upda
 | `uat`  | `UAT`              | `uat`        |
 | `main` | `PROD`             | `production` |
 
-Any other branch fails. The deployment workflows in #92 call it with `uses: ./.github/workflows/migrate.yml` after CI passes and before deploying. Until then it can be run by hand from **Actions → Database migrations → Run workflow**, choosing the branch.
+Any other branch fails. A release migrates after CI and the build pass and before deploying. To migrate without releasing, use **Actions → Database migrations → Run workflow** and choose the branch.
 
-Runs are serialized per environment. A running migration is never cancelled; if several are queued, only the newest waits.
+Releases and migrations share one lock per environment (`release-<ENV>`). A running one is never cancelled; if several are queued, only the newest waits.
 
 Production runs also need:
 
 1. Approval from the `PROD` environment's required reviewer.
-2. The `backup-verified` input set to `true`, after confirming the backup/restore check in [production-release.md](production-release.md) for this release.
+2. The `backup-verified` input set to `true` (on the Deploy or Database migrations dispatch), after confirming the backup/restore check in [production-release.md](production-release.md) for this release.
 
 Each run writes a summary with the source commit, the Neon branch and a **restore point**: the database time and WAL position captured just before migrating. Neon can restore a branch to that time.
 
@@ -72,6 +72,9 @@ VALUES ('dev', 'br-your-dev-branch-id');   -- the branch's own values
 
 GRANT USAGE ON SCHEMA invalert_ops TO migrator;   -- your migration role
 GRANT SELECT ON invalert_ops.environment_marker TO migrator;
+-- The deployment smoke test (#92) reads the marker through /api/health with the runtime role.
+GRANT USAGE ON SCHEMA invalert_ops TO app_runtime;
+GRANT SELECT ON invalert_ops.environment_marker TO app_runtime;
 ```
 
 Redo this after creating or refreshing `dev` or `uat` from another branch. Prisma does not manage the `invalert_ops` schema, so migrations never touch it.
@@ -108,7 +111,7 @@ The old application keeps serving while a migration runs and until the new deplo
 
 ## When a migration fails
 
-A failed migration stops the workflow, so the deployment step in #92 never runs and the previous app keeps serving.
+A failed migration stops the release, so the deploy step never runs and the previous app keeps serving.
 
 Do not re-run blindly, and never reset a persistent database.
 

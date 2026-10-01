@@ -77,7 +77,7 @@
 │   │   ├── requests/
 │   │   │   ├── route.ts          # GET /api/requests
 │   │   │   └── [requestId]/route.ts  # PATCH /api/requests/:id
-│   │   ├── health/route.ts       # GET /api/health — DB round-trip, for uptime monitors (public)
+│   │   ├── health/route.ts       # GET /api/health — DB round-trip + appEnv/dbEnv/revision identity for uptime monitors and deploy smoke tests (public)
 │   │   ├── push/
 │   │   │   ├── public-key/route.ts   # GET /api/push/public-key
 │   │   │   └── subscription/route.ts # POST / DELETE /api/push/subscription
@@ -103,7 +103,8 @@
 │   │   ├── Sidebar.tsx
 │   │   ├── MobileHeader.tsx
 │   │   ├── BottomNav.tsx
-│   │   └── TierBadge.tsx
+│   │   ├── TierBadge.tsx
+│   │   └── NonProductionBanner.tsx  # Shown when APP_ENV is dev/uat or on Vercel previews
 │   ├── InstallBanner.tsx         # PWA install prompt (OS-aware, one-time dismissible)
 │   └── print/
 │       ├── LabelEditor.tsx       # Interactive drag-and-drop label canvas (PRO only)
@@ -116,6 +117,7 @@
 │   ├── push.ts                   # sendStockingPushNotification() via web-push (VAPID)
 │   ├── rate-limit.ts             # DB-backed fixed-window rate limiter (RATE_LIMITS, checkRateLimit)
 │   ├── tier.ts                   # TIER_LIMITS, canCreateItem()
+│   ├── app-env.ts                # APP_ENVS, getAppEnv(), isNonProductionDeployment() (banner + noindex)
 │   ├── label.ts                  # LABEL_SIZES, LABEL_SIZE_CONFIG, TextElement, getDefaultTextElements()
 │   └── validations/
 │       ├── item.ts               # createItemSchema, updateItemSchema
@@ -127,17 +129,22 @@
 │   ├── manifest.json             # PWA manifest (required for iOS web push)
 │   └── sw.js                     # Service worker: handles push events + notification clicks
 ├── .github/workflows/
-│   ├── ci.yml                    # Lint, typecheck, audit, migrations, tests, build on dev/uat/main
+│   ├── ci.yml                    # Lint, typecheck, audit, migrations, tests, build on PRs; called by deploy.yml on pushes
+│   ├── deploy.yml                # Sole release controller: CI → build → migrate → deploy → smoke → alias (DEV/UAT on push, PROD by dispatch + approval)
 │   ├── promotion-guard.yml       # Enforces dev → uat → main promotion paths
-│   ├── migrate.yml               # Reusable: identity-checked, serialized `prisma migrate deploy` per environment
+│   ├── migrate.yml               # Manual identity-checked `prisma migrate deploy` (same action as releases)
 │   └── notification-worker.yml   # Optional scheduled notification retry worker
+├── .github/actions/migrate/      # Composite action: migration target check + `prisma migrate deploy` + summary
 ├── docs/
+│   ├── deployment.md             # Gated Vercel delivery (#92): pipeline, config, rollout, verification
 │   ├── production-release.md     # Release runbook
 │   ├── branching-and-promotion.md
 │   └── database-migrations.md    # Migration pipeline, environment marker, roles, expand/contract, recovery
 ├── scripts/
 │   ├── test-db.mjs               # `npm run test:db`: migrations + tests on disposable PGlite
 │   ├── migration-target.mjs      # Validates a migration job's Neon target (marker, endpoint, APP_ENV)
+│   ├── deploy-target.mjs         # Validates a release's branch/APP_ENV/Vercel target/host mapping
+│   ├── smoke.mjs                 # Post-deploy /api/health check: env, DB marker, revision
 │   ├── rehearse-upgrade.mjs      # CI: upgrade main's schema + fixtures to this commit; released migrations immutable
 │   └── upgrade-fixtures.sql
 ├── .claude/
@@ -149,7 +156,7 @@
 ├── postcss.config.mjs
 ├── eslint.config.mjs             # ESLint flat config (next/core-web-vitals + typescript)
 ├── instrumentation.ts            # Startup hook — runs lib/env.ts validation
-└── .github/workflows/ci.yml     # CI: lint, tsc, test, env-free build
+└── vercel.json                   # Crons; disables Vercel Git deploys except main (see docs/deployment.md)
 ```
 
 ---
@@ -170,6 +177,8 @@ fix/*   ────┘      └─ release/* ─┘      ▲
 - **Agent branches** follow the pattern `<agent>/<task-slug>-<id>` (e.g. `claude/add-search-8xKj2`)
 
 PRs must target `dev`. `.github/workflows/promotion-guard.yml` enforces the promotion paths; use merge commits (not squash) for promotion PRs. Full rules and the manual branch-protection settings: `docs/branching-and-promotion.md`.
+
+Releases go only through `.github/workflows/deploy.yml`: merges to `dev`/`uat` deploy automatically; production is released by dispatching **Deploy** on `main` (backup-verified, PROD approval) and must match the tree UAT successfully deployed. `APP_ENV` (`dev`/`uat`/`production`) is the hosted environment identity — never infer it from `NODE_ENV`. See `docs/deployment.md`.
 
 ---
 

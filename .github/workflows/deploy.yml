@@ -1,0 +1,295 @@
+name: Deploy
+# The single release controller for dev, UAT and production (#92). See docs/deployment.md.
+# CI → validate config → target-specific build → identity-checked migration → deploy →
+# smoke test → assign the stable domain → smoke test again. Vercel's own Git deploys are
+# disabled (vercel.json), so these gates cannot be bypassed.
+on:
+  push:
+    branches: [dev, uat, main]
+  # Production releases start here, from main, after the backup/restore check.
+  workflow_dispatch:
+    inputs:
+      backup-verified:
+        description: Production only. I verified the backup/restore check for this release.
+        type: boolean
+        default: false
+      hotfix:
+        description: Production only. Release main although it differs from what UAT tested (hotfix/* path).
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      environment: ${{ steps.map.outputs.environment }}
+      branch: ${{ steps.map.outputs.branch }}
+      release: ${{ steps.map.outputs.release }}
+    steps:
+      # The target comes only from the trusted Git branch, never from an input.
+      - id: map
+        env:
+          REF: ${{ github.ref }}
+          EVENT: ${{ github.event_name }}
+          PROD_ENABLED: ${{ vars.DEPLOY_PROD_ENABLED }}
+          BACKUP_VERIFIED: ${{ inputs.backup-verified }}
+        run: |
+          case "$REF" in
+            refs/heads/dev) env=DEV; release=true ;;
+            refs/heads/uat) env=UAT; release=true ;;
+            refs/heads/main)
+              env=PROD
+              if [ "$EVENT" != workflow_dispatch ]; then
+                # A push to main only verifies the candidate; releasing is a deliberate dispatch.
+                release=false
+                echo "::notice::Push to main: verifying only. Release with Actions → Deploy → Run workflow on main."
+              elif [ "$PROD_ENABLED" != true ]; then
+                echo "::error::Production releases are disabled until DEPLOY_PROD_ENABLED=true (docs/deployment.md)."
+                exit 1
+              elif [ "$BACKUP_VERIFIED" != true ]; then
+                echo "::error::Production releases need backup-verified=true after completing the backup/restore check."
+                exit 1
+              else
+                release=true
+              fi ;;
+            *) echo "::error::$REF has no deployment target. Run from dev, uat or main."; exit 1 ;;
+          esac
+          { echo "environment=$env"; echo "branch=${REF#refs/heads/}"; echo "release=$release"; } >> "$GITHUB_OUTPUT"
+
+  ci:
+    needs: resolve
+    uses: ./.github/workflows/ci.yml
+
+  # Production may only receive content UAT tested: main's tree (source, lockfile and
+  # migrations) must equal the tree of UAT's current successful deployment.
+  verify-promotion:
+    needs: resolve
+    if: needs.resolve.outputs.environment == 'PROD'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare with UAT's tested revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HOTFIX: ${{ inputs.hotfix }}
+        run: |
+          tree=$(git rev-parse "HEAD^{tree}")
+          tested=""
+          # Newest first. GitHub marks superseded deployments "inactive", so the first
+          # "success" is the revision UAT currently serves after passing its smoke test.
+          for deployment in $(gh api "repos/$REPO/deployments?environment=UAT&per_page=30" --jq '.[] | "\(.id):\(.sha)"'); do
+            state=$(gh api "repos/$REPO/deployments/${deployment%%:*}/statuses?per_page=1" --jq '.[0].state // ""')
+            if [ "$state" = success ]; then tested=${deployment#*:}; break; fi
+          done
+          tested_tree=$( [ -n "$tested" ] && git rev-parse --verify --quiet "$tested^{tree}" || true)
+          {
+            echo "### Promotion check"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Candidate | \`$GITHUB_SHA\` (tree \`$tree\`) |"
+            echo "| UAT tested | \`${tested:-none}\` (tree \`${tested_tree:-unknown}\`) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$tested_tree" ] && [ "$tested_tree" = "$tree" ]; then
+            echo "Candidate matches UAT-tested revision $tested."
+            echo "| Result | matches UAT |" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$HOTFIX" = true ]; then
+            echo "::warning::HOTFIX override: main differs from UAT-tested ${tested:-(none)}. Merge main back into uat and dev afterwards."
+            echo "| Result | **HOTFIX override** — differs from UAT |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::main ($GITHUB_SHA) does not match the revision UAT tested (${tested:-none found}). Promote through uat, or dispatch with hotfix=true for a hotfix/* release."
+            echo "| Result | **differs from UAT** |" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+  release:
+    needs: [resolve, ci, verify-promotion]
+    if: >-
+      always() && needs.resolve.outputs.release == 'true' && needs.ci.result == 'success' &&
+      (needs.verify-promotion.result == 'success' ||
+       (needs.verify-promotion.result == 'skipped' && needs.resolve.outputs.environment != 'PROD'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # PROD requires its configured reviewer's approval before this job starts.
+    environment:
+      name: ${{ needs.resolve.outputs.environment }}
+      url: ${{ steps.domain.outputs.stable-url }}
+    # One release per environment. A running release is never cancelled; a newer queued
+    # candidate replaces an older queued one. migrate.yml shares this lock.
+    concurrency:
+      group: release-${{ needs.resolve.outputs.environment }}
+      cancel-in-progress: false
+    env:
+      ENVIRONMENT: ${{ needs.resolve.outputs.environment }}
+      BRANCH: ${{ needs.resolve.outputs.branch }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TELEMETRY_DISABLED: "1"
+    steps:
+      # Also checked in resolve, before the PROD approval is requested.
+      - name: Require production backup confirmation
+        if: needs.resolve.outputs.environment == 'PROD' && !inputs.backup-verified
+        run: |
+          echo "::error::Production releases need backup-verified=true after completing the backup/restore check."
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      # The Vercel CLI reads the deployment's Git branch from HEAD; branch-scoped Preview
+      # variables depend on it, so name the trusted branch explicitly.
+      - name: Check out the release branch name
+        run: git checkout -B "$BRANCH" "$GITHUB_SHA"
+      # An older candidate that starts after a newer push must not overwrite it.
+      - name: Confirm this is still the branch head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          head=$(gh api "repos/$REPO/branches/$BRANCH" --jq .commit.sha)
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "::error::Superseded: $BRANCH is now at $head. This older candidate stops so it cannot overwrite the newer release."
+            exit 1
+          fi
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate deployment target
+        id: target
+        run: node scripts/deploy-target.mjs
+        env:
+          GIT_REF_NAME: ${{ needs.resolve.outputs.branch }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          APP_ENV: ${{ vars.APP_ENV }}
+          VERCEL_TARGET: ${{ vars.VERCEL_TARGET }}
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          PRODUCTION_HOST: ${{ vars.PRODUCTION_HOST }}
+      - name: Install Vercel CLI
+        run: npm install --global vercel@62.0.0
+      # Pull the exact branch/target configuration, not generic Preview defaults.
+      - name: Pull Vercel configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TARGET: ${{ steps.target.outputs.vercel-target }}
+          EXPECTED_APP_ENV: ${{ steps.target.outputs.app-env }}
+        run: |
+          if [ "$VERCEL_TARGET" = production ]; then
+            vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          else
+            vercel pull --yes --environment=preview --git-branch="$BRANCH" --token="$VERCEL_TOKEN"
+          fi
+          # Fail before building or migrating if Vercel's scope carries another environment's identity.
+          env_file=".vercel/.env.$VERCEL_TARGET.local"
+          if ! grep -qxE "APP_ENV=\"?$EXPECTED_APP_ENV\"?" "$env_file"; then
+            echo "::error::Vercel's $VERCEL_TARGET configuration for $BRANCH does not set APP_ENV=$EXPECTED_APP_ENV."
+            exit 1
+          fi
+      # Build before migrating so a build failure never leaves a migrated database behind.
+      - name: Build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TARGET: ${{ steps.target.outputs.vercel-target }}
+        run: |
+          if [ "$VERCEL_TARGET" = production ]; then
+            vercel build --prod --token="$VERCEL_TOKEN"
+          else
+            vercel build --token="$VERCEL_TOKEN"
+          fi
+      - name: Migrate database
+        id: migrate
+        uses: ./.github/actions/migrate
+        with:
+          environment: ${{ needs.resolve.outputs.environment }}
+          app-env: ${{ vars.APP_ENV }}
+          neon-project-id: ${{ vars.NEON_PROJECT_ID }}
+          neon-branch-id: ${{ vars.NEON_BRANCH_ID }}
+          neon-endpoint-id: ${{ vars.NEON_ENDPOINT_ID }}
+          migration-database-url: ${{ secrets.MIGRATION_DATABASE_URL }}
+          neon-api-key: ${{ secrets.NEON_API_KEY }}
+      - name: Confirm this is still the branch head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          head=$(gh api "repos/$REPO/branches/$BRANCH" --jq .commit.sha)
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "::error::Superseded: $BRANCH is now at $head. This older candidate stops so it cannot overwrite the newer release."
+            exit 1
+          fi
+      # Production deploys without taking the domain; it is promoted only after the smoke test.
+      - name: Deploy
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TARGET: ${{ steps.target.outputs.vercel-target }}
+        run: |
+          args=(--prebuilt --env "APP_REVISION=$GITHUB_SHA" --token="$VERCEL_TOKEN")
+          [ "$VERCEL_TARGET" = production ] && args+=(--prod --skip-domain)
+          url=$(vercel deploy "${args[@]}" | tail -n 1)
+          case "$url" in https://*) ;; *) echo "::error::Vercel did not return a deployment URL."; exit 1 ;; esac
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed $url"
+      - name: Smoke test the deployment
+        run: node scripts/smoke.mjs
+        env:
+          SMOKE_URLS: ${{ steps.deploy.outputs.url }}
+          EXPECTED_APP_ENV: ${{ steps.target.outputs.app-env }}
+          EXPECTED_REVISION: ${{ github.sha }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      # dev/UAT get their stable alias only after this deployment passed; the alias was
+      # validated as never being the production host. Production is promoted instead.
+      - name: Assign stable domain
+        id: domain
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TARGET: ${{ steps.target.outputs.vercel-target }}
+          URL: ${{ steps.deploy.outputs.url }}
+          HOST: ${{ steps.target.outputs.host }}
+          ORIGIN: ${{ steps.target.outputs.origin }}
+        run: |
+          if [ "$VERCEL_TARGET" = production ]; then
+            vercel promote "$URL" --yes --token="$VERCEL_TOKEN"
+          else
+            vercel alias set "$URL" "$HOST" --token="$VERCEL_TOKEN"
+          fi
+          echo "stable-url=$ORIGIN" >> "$GITHUB_OUTPUT"
+      - name: Smoke test the stable URL
+        run: node scripts/smoke.mjs
+        env:
+          SMOKE_URLS: ${{ steps.target.outputs.origin }}
+          EXPECTED_APP_ENV: ${{ steps.target.outputs.app-env }}
+          EXPECTED_REVISION: ${{ github.sha }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      - name: Record release
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+          URL: ${{ steps.deploy.outputs.url }}
+          ORIGIN: ${{ steps.target.outputs.origin }}
+          MIGRATION: ${{ steps.migrate.outcome }}
+          RESTORE_AT: ${{ steps.migrate.outputs.restore-at }}
+          HOTFIX: ${{ inputs.hotfix }}
+        run: |
+          {
+            echo "### Release: $ENVIRONMENT ($RESULT)"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Source | \`$GITHUB_SHA\` ($BRANCH), tree \`$(git rev-parse 'HEAD^{tree}')\` |"
+            echo "| Workflow run | $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT) |"
+            echo "| Vercel deployment | ${URL:-not deployed} |"
+            echo "| Stable URL | ${ORIGIN:-n/a} |"
+            echo "| Migration | ${MIGRATION:-not run}${RESTORE_AT:+, restore point $RESTORE_AT} |"
+            [ "$HOTFIX" = true ] && echo "| Hotfix override | yes |"
+            true
+          } >> "$GITHUB_STEP_SUMMARY"

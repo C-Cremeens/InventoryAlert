@@ -1,0 +1,81 @@
+name: Migrate database
+description: >-
+  Applies committed Prisma migrations after proving the credentials point at the expected
+  Neon branch (#91). Used by deploy.yml and migrate.yml. Expects the repository checked out
+  and dependencies installed. Fails closed on any identity mismatch.
+inputs:
+  environment:
+    description: GitHub Environment name (DEV, UAT or PROD), for the summary.
+    required: true
+  app-env:
+    required: true
+  neon-project-id:
+    required: true
+  neon-branch-id:
+    required: true
+  neon-endpoint-id:
+    required: true
+  migration-database-url:
+    required: true
+  neon-api-key:
+    required: false
+    default: ""
+outputs:
+  restore-at:
+    description: Database time captured immediately before migrating (Neon point-in-time restore target).
+    value: ${{ steps.validate.outputs.restore-at }}
+  restore-lsn:
+    description: WAL position captured immediately before migrating.
+    value: ${{ steps.validate.outputs.restore-lsn }}
+runs:
+  using: composite
+  steps:
+    - name: Validate migration target
+      id: validate
+      shell: bash
+      run: node scripts/migration-target.mjs
+      env:
+        GIT_REF_NAME: ${{ github.ref_name }}
+        APP_ENV: ${{ inputs.app-env }}
+        NEON_PROJECT_ID: ${{ inputs.neon-project-id }}
+        NEON_BRANCH_ID: ${{ inputs.neon-branch-id }}
+        NEON_ENDPOINT_ID: ${{ inputs.neon-endpoint-id }}
+        MIGRATION_DATABASE_URL: ${{ inputs.migration-database-url }}
+        NEON_API_KEY: ${{ inputs.neon-api-key }}
+    # migrate status exits non-zero while migrations are pending, so this listing never fails the job.
+    - name: Pending migrations
+      shell: bash
+      run: npx prisma migrate status || true
+      env:
+        DATABASE_URL: ${{ inputs.migration-database-url }}
+    # The migration credential is bound to Prisma's DATABASE_URL only within these steps.
+    - name: Apply migrations
+      shell: bash
+      run: npx prisma migrate deploy
+      env:
+        DATABASE_URL: ${{ inputs.migration-database-url }}
+    - name: Verify no migrations are pending
+      id: verify
+      shell: bash
+      run: npx prisma migrate status
+      env:
+        DATABASE_URL: ${{ inputs.migration-database-url }}
+    - name: Record migration
+      if: always() && steps.validate.outcome == 'success'
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        NEON_BRANCH_ID: ${{ inputs.neon-branch-id }}
+        RESTORE_AT: ${{ steps.validate.outputs.restore-at }}
+        RESTORE_LSN: ${{ steps.validate.outputs.restore-lsn }}
+        RESULT: ${{ steps.verify.outcome == 'success' && 'success' || 'failure' }}
+      run: |
+        {
+          echo "### Migration: $ENVIRONMENT ($RESULT)"
+          echo "| | |"
+          echo "|---|---|"
+          echo "| Source | \`$GITHUB_SHA\` ($GITHUB_REF_NAME) |"
+          echo "| Neon branch | \`$NEON_BRANCH_ID\` |"
+          echo "| Restore point (before migrating) | $RESTORE_AT, LSN \`$RESTORE_LSN\` |"
+          echo "| Committed migrations at source | $(ls prisma/migrations | grep -c "^[0-9]") |"
+        } >> "$GITHUB_STEP_SUMMARY"

@@ -30,6 +30,16 @@ const securityHeaders = [
   },
 ];
 
+// Builds are target-specific (#92), so the hosted environment is known here.
+// Mirrors isNonProductionDeployment() in lib/app-env.ts.
+const nonProduction =
+  ["dev", "uat"].includes(process.env.APP_ENV ?? "") ||
+  process.env.VERCEL_ENV === "preview";
+
+if (nonProduction) {
+  securityHeaders.push({ key: "X-Robots-Tag", value: "noindex, nofollow" });
+}
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [

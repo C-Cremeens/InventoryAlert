@@ -26,6 +26,8 @@ describe("validateEnv", () => {
       "GOOGLE_CLIENT_ID",
       "GOOGLE_CLIENT_SECRET",
       "BLOB_READ_WRITE_TOKEN",
+      "APP_ENV",
+      "VERCEL",
     ]) {
       vi.stubEnv(key, "");
     }
@@ -72,5 +74,28 @@ describe("validateEnv", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXTAUTH_SECRET", "short");
     expect(() => validateEnv()).toThrow(/NEXTAUTH_SECRET/);
+  });
+
+  it("rejects an unknown APP_ENV in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("APP_ENV", "staging");
+    expect(() => validateEnv()).toThrow(/APP_ENV/);
+  });
+
+  it("accepts each hosted APP_ENV value", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    for (const value of ["dev", "uat", "production"]) {
+      vi.stubEnv("APP_ENV", value);
+      expect(() => validateEnv()).not.toThrow();
+    }
+  });
+
+  it("warns when a Vercel deployment has no APP_ENV", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL", "1");
+    expect(() => validateEnv()).not.toThrow();
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("APP_ENV is not set"),
+    );
   });
 });
