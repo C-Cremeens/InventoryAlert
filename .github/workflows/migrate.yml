@@ -1,0 +1,112 @@
+name: Database migrations
+# Applies committed Prisma migrations to the database the triggering branch maps to (#91).
+# Called by the deployment workflows (#92) after CI passes; can also be run manually.
+# Fails closed on any identity mismatch. See docs/database-migrations.md.
+on:
+  workflow_call:
+    inputs:
+      backup-verified:
+        description: Production only. Confirms the backup/restore check in docs/database-migrations.md was done for this release.
+        type: boolean
+        default: false
+    outputs:
+      restore-at:
+        description: Database time captured immediately before migrating (Neon point-in-time restore target).
+        value: ${{ jobs.migrate.outputs.restore-at }}
+  workflow_dispatch:
+    inputs:
+      backup-verified:
+        description: Production only. I verified the backup/restore check for this release.
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      environment: ${{ steps.map.outputs.environment }}
+    steps:
+      # The target comes only from the trusted Git branch, never from an input.
+      - id: map
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          case "$REF" in
+            refs/heads/dev) echo "environment=DEV" ;;
+            refs/heads/uat) echo "environment=UAT" ;;
+            refs/heads/main) echo "environment=PROD" ;;
+            *) echo "::error::$REF has no migration target. Run from dev, uat or main."; exit 1 ;;
+          esac >> "$GITHUB_OUTPUT"
+
+  migrate:
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ needs.resolve.outputs.environment }}
+    # One migration per environment at a time. A running migration is never cancelled;
+    # a newer queued run replaces an older queued one.
+    concurrency:
+      group: migrate-${{ needs.resolve.outputs.environment }}
+      cancel-in-progress: false
+    outputs:
+      restore-at: ${{ steps.validate.outputs.restore-at }}
+    steps:
+      - name: Require production backup confirmation
+        if: needs.resolve.outputs.environment == 'PROD' && !inputs.backup-verified
+        run: |
+          echo "::error::Production migrations need backup-verified=true after completing the backup/restore check."
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate migration target
+        id: validate
+        run: node scripts/migration-target.mjs
+        env:
+          GIT_REF_NAME: ${{ github.ref_name }}
+          APP_ENV: ${{ vars.APP_ENV }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          NEON_BRANCH_ID: ${{ vars.NEON_BRANCH_ID }}
+          NEON_ENDPOINT_ID: ${{ vars.NEON_ENDPOINT_ID }}
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      # migrate status exits non-zero while migrations are pending, so this listing never fails the job.
+      - name: Pending migrations
+        run: npx prisma migrate status || true
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      # The migration credential is bound to Prisma's DATABASE_URL only within these steps.
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      - name: Verify no migrations are pending
+        run: npx prisma migrate status
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      - name: Record migration
+        if: always() && steps.validate.outcome == 'success'
+        env:
+          ENVIRONMENT: ${{ needs.resolve.outputs.environment }}
+          NEON_BRANCH_ID: ${{ vars.NEON_BRANCH_ID }}
+          RESTORE_AT: ${{ steps.validate.outputs.restore-at }}
+          RESTORE_LSN: ${{ steps.validate.outputs.restore-lsn }}
+          RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "### Migration: $ENVIRONMENT ($RESULT)"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Source | \`$GITHUB_SHA\` ($GITHUB_REF_NAME) |"
+            echo "| Neon branch | \`$NEON_BRANCH_ID\` |"
+            echo "| Restore point (before migrating) | $RESTORE_AT, LSN \`$RESTORE_LSN\` |"
+            echo "| Committed migrations at source | $(ls prisma/migrations | grep -c "^[0-9]") |"
+          } >> "$GITHUB_STEP_SUMMARY"

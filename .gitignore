@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/.upgrade-rehearsal
 
 # next.js
 /.next/

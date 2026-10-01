@@ -28,6 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # Full history so the upgrade rehearsal can read origin/main.
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -45,6 +47,14 @@ jobs:
         run: npm run db:migrate
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/inventoryalert_test
+      - name: Rehearse upgrade from the production release (main)
+        run: |
+          node -e "const c=new (require('pg').Client)(process.env.ADMIN_URL);c.connect().then(()=>c.query('CREATE DATABASE inventoryalert_upgrade')).then(()=>c.end())"
+          node scripts/rehearse-upgrade.mjs
+        env:
+          ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/inventoryalert_upgrade
+          BASE_REF: origin/main
       - name: Unit and PostgreSQL integration tests
         run: npm test
         env:
