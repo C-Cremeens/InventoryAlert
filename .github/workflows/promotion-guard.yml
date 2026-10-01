@@ -1,0 +1,50 @@
+name: Promotion guard
+# Enforces feature/* → dev → uat → main. See docs/branching-and-promotion.md.
+on:
+  pull_request:
+    branches: [uat, main]
+    types: [opened, edited, reopened, synchronize]
+permissions:
+  contents: read
+jobs:
+  promotion-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check promotion source
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          [ "$HEAD_REPO" = "$REPO" ] || fail "Promotions must come from a branch in $REPO, not a fork."
+          on_branch() { git merge-base --is-ancestor "$1" "origin/$2"; }
+          case "$BASE:$HEAD" in
+            # Only commits that already landed on dev may enter UAT. A release/* branch freezes a
+            # candidate so later dev commits do not silently join it.
+            uat:dev|uat:release/*)
+              on_branch "$HEAD_SHA" dev || fail "$HEAD_SHA is not on dev. Land changes on dev first, then promote." ;;
+            # Back-propagates a merged hotfix from production.
+            uat:main)
+              on_branch "$HEAD_SHA" main || fail "$HEAD_SHA is not on main." ;;
+            main:uat)
+              on_branch "$HEAD_SHA" uat || fail "$HEAD_SHA is not on uat." ;;
+            # Emergency exception: cut from main, then merge main back into uat and dev.
+            main:hotfix/*)
+              git merge-base --is-ancestor origin/main "$HEAD_SHA" || fail "Hotfix branches must be cut from main."
+              for stage in dev uat; do
+                shared=$(git merge-base "$HEAD_SHA" "origin/$stage")
+                on_branch "$shared" main || fail "Hotfix contains $stage commits not yet on main."
+              done
+              echo "::warning::Hotfix: after merging, merge main back into uat and dev." ;;
+            *)
+              fail "$HEAD cannot merge into $BASE. Allowed: dev, release/* or main → uat; uat or hotfix/* → main." ;;
+          esac
+          echo "Promotion $HEAD ($HEAD_SHA) → $BASE allowed."
